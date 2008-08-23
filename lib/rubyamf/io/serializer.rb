@@ -15,20 +15,20 @@ module RubyAMF
     end
     
     def write_null
-      output_stream << NULL
+      output_stream << NULL_MARKER
     end
     
     def write_false
-      output_stream << FALSE
+      output_stream << FALSE_MARKER
     end
     
     def write_true
-      output_stream << TRUE
+      output_stream << TRUE_MARKER
     end
     
     # integers can be 29 bits wide in the AMF spec
     def write_number number
-      if number >= INTEGER_MIN && number <= INTEGER_MAX #check valid range for 29 bits
+      if number >= MIN_INTEGER && number <= MAX_INTEGER #check valid range for 29 bits
         write_integer number
       else #overflow to a double
         write_double number 
@@ -36,15 +36,15 @@ module RubyAMF
     end
 
     def write_integer number
-      output_stream << INTEGER << ( @integer_cache[number] ||= pack_int(number) )
+      output_stream << INTEGER_MARKER << ( @integer_cache[number] ||= pack_int(number) )
     end
       
     def write_double double
-      output_stream << NUMBER << ( @floats_cache[double] ||= [double].pack('G') )
+      output_stream << DOUBLE_MARKER << ( @floats_cache[double] ||= [double].pack('G') ).to_s
     end
     
     def write_string string
-      output_stream << STRING << string
+      output_stream << STRING_MARKER << string
     end
     
     def write_date datetime

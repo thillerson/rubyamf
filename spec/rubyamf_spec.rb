@@ -16,58 +16,58 @@ describe RubyAMF::Message do
 
       it "should serialize a null" do
         @message.write nil
-        @message.output_stream.should == AMF_NULL
+        @message.output_stream.should == ENCODED_NULL_MARKER
       end
 
       it "should serialize a false" do
         @message.write false
-        @message.output_stream.should == AMF_FALSE
+        @message.output_stream.should == ENCODED_FALSE_MARKER
       end
 
       it "should serialize a true" do
         @message.write true
-        @message.output_stream.should == AMF_TRUE
+        @message.output_stream.should == ENCODED_TRUE_MARKER
       end
 
       it "should serialize a simple number" do
         @message.write 1
-        @message.output_stream.should == "#{AMF_INTEGER}\001"
+        @message.output_stream.should == "#{ENCODED_INTEGER_MARKER}\001"
       end
 
       it "should serialize a floating point number" do
         @message.write 1.1
-        @message.output_stream.should == "#{AMF_NUMBER}#{[1.1].pack('G')}"
+        @message.output_stream.should == "#{ENCODED_DOUBLE_MARKER}#{[1.1].pack('G')}"
       end
 
       it "should serialize a negative floating point number" do
         @message.write -1.1
-        @message.output_stream.should == "#{AMF_NUMBER}#{[-1.1].pack('G')}"
+        @message.output_stream.should == "#{ENCODED_DOUBLE_MARKER}#{[-1.1].pack('G')}"
       end
 
       it "should serialize large numbers" do
         # bigger integer
-        big_positive_int = AMF_INTEGER_MAX + 1
+        big_positive_int = MAX_INTEGER + 1
         @message.write( big_positive_int )
-        @message.output_stream.should == "#{AMF_NUMBER}" << [big_positive_int].pack('G')
+        @message.output_stream.should == "#{ENCODED_DOUBLE_MARKER}" << [big_positive_int].pack('G')
       end
 
       it "should serialize large negative numbers" do
         # bigger negative integer
-        big_negative_int = AMF_INTEGER_MIN - 1
+        big_negative_int = MIN_INTEGER - 1
         @message.write( big_negative_int )
-        @message.output_stream.should == "#{AMF_NUMBER}" << [big_negative_int].pack('G')
+        @message.output_stream.should == "#{ENCODED_DOUBLE_MARKER}" << [big_negative_int].pack('G')
       end
 
       it "should serialize a simple string" do
         @message.write "Hello World!"
-        @message.output_stream.should == "#{AMF_STRING}Hello World!"
+        @message.output_stream.should == "#{ENCODED_STRING_MARKER}Hello World!"
       end
 
       it "should serialize a Date" do
         pending do
           d = Date.parse "1/1/1971"
           @message.write d
-          @message.output_stream.should == "#{AMF_DATE}" << [0].pack('G')
+          @message.output_stream.should == "#{ENCODED_DATE_MARKER}" << [0].pack('G')
         end
       end
 
