@@ -34,7 +34,7 @@ end
 REV = nil
 # UNCOMMENT IF REQUIRED:
 # REV = YAML.load(`svn info`)['Revision']
-VERS = Rubyamf::VERSION::STRING + (REV ? ".#{REV}" : "")
+VERS = RubyAMF::VERSION::STRING + (REV ? ".#{REV}" : "")
 RDOC_OPTS = ['--quiet', '--title', 'rubyamf documentation',
     "--opname", "index.html",
     "--line-numbers",
