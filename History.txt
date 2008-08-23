@@ -1,0 +1,4 @@
+== 0.0.1 2008-08-22
+
+* Beginning of time:
+  * How is code made? Well, when a developer and a computer love each other very much...

@@ -1,0 +1,2 @@
+
+Congratulations on your new RubyAMF! See more at http://rubyamf.rubyforge.org
