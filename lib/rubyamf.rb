@@ -12,11 +12,6 @@ module RubyAMF
     include Serializer
     include Deserializer
     
-    def initialize input_stream=''
-      self.input_stream = input_stream
-      self.output_stream = ''
-    end
-    
   end
   
 end

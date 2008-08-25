@@ -1,13 +1,16 @@
+require 'date'
 require 'constants'
+require 'io/stream'
+
 module RubyAMF
   module Serializer
     include RubyAMF::Constants
     
-    attr_accessor :output_stream
+    def output_stream
+      @output_stream ||= Stream.new
+    end
     
     def write value
-      @output_stream ||= ''
-      
       @integer_cache  = {}
       @floats_cache   = {}
       
@@ -39,8 +42,9 @@ module RubyAMF
       output_stream << INTEGER_MARKER << ( @integer_cache[number] ||= pack_int(number) )
     end
       
-    def write_double double
-      output_stream << DOUBLE_MARKER << ( @floats_cache[double] ||= [double].pack('G') ).to_s
+    def write_double double, include_marker=true
+      output_stream << DOUBLE_MARKER if include_marker
+      output_stream << ( @floats_cache[double] ||= [double].pack('G') )
     end
     
     def write_string string
@@ -48,13 +52,31 @@ module RubyAMF
     end
     
     def write_date datetime
+      output_stream << DATE_MARKER << LOW_BIT_OF_1
+      
       seconds = if datetime.is_a?(Time)
         datetime.utc unless datetime.utc?
         datetime.to_f
       elsif datetime.is_a?(Date) # this also handles the case for DateTime
-        datetime.strftime("%s").to_i
+        ((datetime.strftime("%s").to_i) * 1000).to_i
       end
-      write_double( (seconds*1000).to_i )
+      
+      write_double seconds, false
+    end
+    
+    def write_object obj
+      # Dynamic, Anonymous Object - very simple heuristic
+      output_stream << OBJECT_MARKER << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
+      # find all public methods belonging to this object alone
+      obj.public_methods(false).each do |method_name|
+        # and write them to the stream if they take no arguments
+        method_def = obj.method(method_name)
+        if method_def.arity == 0
+          write_string method_name
+          obj.send(method_name).write_amf self
+        end
+      end
+      output_stream << CLOSE_OBJECT
     end
     
     #Here we have some High Magic

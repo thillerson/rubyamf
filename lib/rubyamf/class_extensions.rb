@@ -1,3 +1,5 @@
+require 'bigdecimal'
+
 class NilClass
   def write_amf(message)
     message.write_null
@@ -60,14 +62,12 @@ end
 
 class Time
   def write_amf(message)
-    message.output_stream << RubyAMF::Constants::DATE
     message.write_date(self)
   end
 end
 
 class Date
   def write_amf(message)
-    message.output_stream << RubyAMF::Constants::DATE
     message.write_date(self)
   end
 end
