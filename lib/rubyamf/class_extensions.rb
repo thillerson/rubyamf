@@ -48,6 +48,12 @@ class String
   end
 end
 
+class Symbol
+  def write_amf(message)
+    message.write_string(self.to_s)
+  end
+end
+
 class Array
   def write_amf(message)
     message.write_array(self)

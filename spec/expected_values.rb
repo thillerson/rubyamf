@@ -1,5 +1,6 @@
 ENCODED_ONE                       = "\001"
 ENCODED_TEN                       = "\n"
+ENCODED_42                        = "*"
 
 ENCODED_UNDEFINED_MARKER          = "\000"
 ENCODED_NULL_MARKER               = "\001"
@@ -17,6 +18,7 @@ ENCODED_BYTE_ARRAY_MARKER         = "\f"
 
 ENCODED_DYNAMIC_OBJECT_MARKER     = ENCODED_XML_MARKER
 ENCODED_ANONYMOUS_OBJECT_MARKER   = ENCODED_NULL_MARKER
+ENCODED_CLOSE_OBJECT_MARKER       = ENCODED_NULL_MARKER
 
 MAX_INTEGER                       = 268435455
 MIN_INTEGER                       = -268435456

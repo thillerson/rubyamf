@@ -91,6 +91,11 @@ describe RubyAMF::Message do
         @message.output_stream.should == "#{ENCODED_STRING_MARKER}Hello World!"
       end
 
+      it "should serialize a symbol as a string" do
+        @message.write :foo
+        @message.output_stream.should == "#{ENCODED_STRING_MARKER}foo"
+      end
+
       it "should serialize Dates and DateTimes" do
         # should be 0 in unix epoch time
         d = DateTime.parse "1/1/1970"
@@ -131,22 +136,58 @@ describe RubyAMF::Message do
 
     describe "objects" do
 
-      it "should serialize an unmapped object" do
+      it "should serialize an unmapped object as a dynamic anonymous object" do
 
-        pending do
-          obj = NonMappedObject.new
-          obj.property_one = 'foo'
-          obj.property_two = 1
+        # A non-mapped object is any object not explicitly mapped
+        # it should be encoded as a dynamic anonymous object with 
+        # dynamic properties for all "messages" (public methods)
+        # that have an arity of 0, meaning that they take no arguments
+        obj = NonMappedObject.new
+        obj.property_one = 'foo'
+        obj.property_two = 1
+        obj.nil_property = nil
+      
+        @message.write obj
+        # can't depend on order
+        # open object
+        @message.output_stream.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
+        # close object
+        @message.output_stream.should match(/.*#{ENCODED_CLOSE_OBJECT_MARKER}$/)
         
-          @message.write obj
-          @message.output_stream.should == ""
-        end 
+        # encodable properties
+        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}property_one#{ENCODED_STRING_MARKER}foo/)
+        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}property_two#{ENCODED_INTEGER_MARKER}#{ENCODED_ONE}/)
+        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}another_public_property#{ENCODED_STRING_MARKER}foo/)
+        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}nil_property#{ENCODED_NULL_MARKER}/)
+        
+        # non-encodable properties
+        @message.output_stream.should_not match(/#{ENCODED_STRING_MARKER}method_with_arg/)
+        @message.output_stream.should_not match(/#{ENCODED_STRING_MARKER}read_only_prop/)
       end
       
-      it "should serialize a hash"
-      it "should serialize an array"
+      it "should serialize a shallow hash as a dynamic anonymous object" do
+        hash = {}
+        hash[:foo] = "bar"
+        hash[:answer] = 42
+        
+        @message.write hash
+        # can't depend on order
+        # open object
+        @message.output_stream.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
+        # close object
+        @message.output_stream.should match(/.*#{ENCODED_CLOSE_OBJECT_MARKER}$/)
+
+        # encodable properties
+        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}foo#{ENCODED_STRING_MARKER}bar/)
+        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}foo#{ENCODED_INTEGER_MARKER}#{ENCODED_42}/)
+      end
+      
+      it "should serialize an open struct as a dynamic anonymous object"
+      it "should serialize an array of primatives"
+      it "should serialize a deep graph"
+      it "should serialize a deep mixed graph"
+      it "should serialize an array of objects"
       it "should serialize an ArrayCollection"
-      it "should serialize a pre-mapped object"
 
     end
 
@@ -156,6 +197,13 @@ describe RubyAMF::Message do
       it "should reference objects"
       it "should reference dates"
 
+    end
+    
+    describe "and implementing special features" do
+      
+      it "should serialize a pre-mapped object"
+      it "should camelize snake cased properties"
+      
     end
 
   end

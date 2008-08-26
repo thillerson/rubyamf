@@ -65,21 +65,29 @@ module RubyAMF
     end
     
     def write_object obj
-      # Dynamic, Anonymous Object - very simple heuristic
-      output_stream << OBJECT_MARKER << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
-      # find all public methods belonging to this object alone
-      obj.public_methods(false).each do |method_name|
-        # and write them to the stream if they take no arguments
-        method_def = obj.method(method_name)
-        if method_def.arity == 0
-          write_string method_name
-          obj.send(method_name).write_amf self
+      output_stream << OBJECT_MARKER
+      # Dynamic, Anonymous Object - very simple heuristics
+      if obj.is_a? Hash
+        output_stream << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
+        obj.each do |key, value|
+          key.write_amf self # easy for both string and symbol keys
+          value.write_amf self
+        end
+      else # unmapped object
+        output_stream << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
+        # find all public methods belonging to this object alone
+        obj.public_methods(false).each do |method_name|
+          # and write them to the stream if they take no arguments
+          method_def = obj.method(method_name)
+          if method_def.arity == 0
+            write_string method_name
+            obj.send(method_name).write_amf self
+          end
         end
       end
       output_stream << CLOSE_OBJECT
     end
     
-    #Here we have some High Magic
     def pack_int number
       number = number & 0x1fffffff
       if(number < 0x80)
