@@ -88,6 +88,18 @@ module RubyAMF
       output_stream << CLOSE_OBJECT
     end
     
+    def write_array array
+      output_stream << ARRAY_MARKER << LOW_BIT_OF_1
+      output_stream << pack_int(array.size)
+      # RubyAMF only encodes strict, dense arrays by the AMF spec
+      # so the dynamic portion is empty
+      output_stream << CLOSE_DYNAMIC_ARRAY
+      array.each do |val|
+        val.write_amf self
+      end
+      
+    end
+    
     def pack_int number
       number = number & 0x1fffffff
       if(number < 0x80)

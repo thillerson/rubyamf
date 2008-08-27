@@ -165,7 +165,7 @@ describe RubyAMF::Message do
         @message.output_stream.should_not match(/#{ENCODED_STRING_MARKER}read_only_prop/)
       end
       
-      it "should serialize a shallow hash as a dynamic anonymous object" do
+      it "should serialize a hash as a dynamic anonymous object" do
         hash = {}
         hash[:foo] = "bar"
         hash[:answer] = 42
@@ -183,15 +183,54 @@ describe RubyAMF::Message do
       end
       
       it "should serialize an open struct as a dynamic anonymous object"
-      it "should serialize an array of primatives"
-      it "should serialize a deep graph"
-      it "should serialize a deep mixed graph"
-      it "should serialize an array of objects"
+      
+      it "should serialize an array of primatives" do
+        a = [1, 2, 3, 4, 5]
+        @message.write a
+        encoded_array = "#{ENCODED_ARRAY_MARKER}"
+        encoded_array << "#{ENCODED_ONE}\005" # U29A-value - a low byte of one and a 5 to denote the length of the array
+        encoded_array << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
+        # the encoded values of the array
+        encoded_array << "#{ENCODED_INTEGER_MARKER}\001#{ENCODED_INTEGER_MARKER}\002#{ENCODED_INTEGER_MARKER}\003#{ENCODED_INTEGER_MARKER}\004#{ENCODED_INTEGER_MARKER}\005"
+        @message.output_stream.should == encoded_array
+      end
+      
+      it "should serialize an array of mixed objects" do
+        h1 = {:foo_one => "bar_one"}
+        h2 = {:foo_two => "bar_two"}
+        class SimpleObj
+          attr_accessor :foo_three
+        end
+        so = SimpleObj.new
+        so.foo_three = 42
+        a = [h1, h2, so]
+        
+        @message.write a
+        encoded_array = "#{ENCODED_ARRAY_MARKER}"
+        encoded_array << "#{ENCODED_ONE}\003" # U29A-value - a low byte of one and a 3 to denote the length of the array
+        encoded_array << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
+        # the encoded values of the array
+        # h1
+        encoded_array << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
+        encoded_array << "#{ENCODED_STRING_MARKER}foo_one#{ENCODED_STRING_MARKER}bar_one"
+        encoded_array << "#{ENCODED_CLOSE_OBJECT_MARKER}"
+        # h2
+        encoded_array << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
+        encoded_array << "#{ENCODED_STRING_MARKER}foo_two#{ENCODED_STRING_MARKER}bar_two"
+        encoded_array << "#{ENCODED_CLOSE_OBJECT_MARKER}"
+        # so
+        encoded_array << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
+        encoded_array << "#{ENCODED_STRING_MARKER}foo_three#{ENCODED_INTEGER_MARKER}#{ENCODED_42}"
+        encoded_array << "#{ENCODED_CLOSE_OBJECT_MARKER}"
+        
+        @message.output_stream.should == encoded_array
+      end
       it "should serialize an ArrayCollection"
+      it "should serialize a deep graph"
 
     end
 
-    describe "and implementing AMF Spec" do
+    describe "and implementing the AMF Spec" do
 
       it "should reference strings"
       it "should reference objects"
@@ -199,13 +238,6 @@ describe RubyAMF::Message do
 
     end
     
-    describe "and implementing special features" do
-      
-      it "should serialize a pre-mapped object"
-      it "should camelize snake cased properties"
-      
-    end
-
   end
   
   describe "when deserializing" do
