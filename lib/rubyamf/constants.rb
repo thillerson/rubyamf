@@ -17,9 +17,10 @@ module RubyAMF
     BYTE_ARRAY_MARKER   = 0x0C
     
     # Other Markers, some reused
-    LOW_BIT_OF_1        = NULL_MARKER
-    DYNAMIC_OBJECT      = XML_MARKER
+    EMPTY_STRING        = NULL_MARKER
+    ONE                 = NULL_MARKER
     ANONYMOUS_OBJECT    = NULL_MARKER
+    DYNAMIC_OBJECT      = XML_MARKER
     CLOSE_OBJECT        = NULL_MARKER
     CLOSE_DYNAMIC_ARRAY = NULL_MARKER
 

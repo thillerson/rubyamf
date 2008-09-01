@@ -22,4 +22,19 @@ def expected_int_value_for number
   number
 end
 
+def expected_encoded_header_for obj_with_length
+  header = obj_with_length.length
+  header = header << 1
+  header = header | 1
+  expected_int_value_for header
+end
+
+# expects no references
+def expected_encoded_string_for str
+  "#{ENCODED_STRING_MARKER}" << expected_encoded_header_for( str ) << str
+end
+
+def expected_encoded_string_reference reference
+  "#{ENCODED_STRING_MARKER}" << ( reference << 1 )
+end
 

@@ -50,17 +50,22 @@ module RubyAMF
     end
     
     def write_string string
-      reference = reference_string(string) || string
-      output_stream << STRING_MARKER << reference
+      output_stream << STRING_MARKER
+      output_stream << EMPTY_STRING and return if string == ''
+      if index = reference_string(string)
+        output_stream << header_for_reference( index )
+      else
+        output_stream << header_for_string( string ) << string
+      end
     end
     
     def write_date datetime
-      output_stream << DATE_MARKER << LOW_BIT_OF_1
+      output_stream << DATE_MARKER << ONE
       
       seconds = if datetime.is_a?(Time)
         datetime.utc unless datetime.utc?
         datetime.to_f
-      elsif datetime.is_a?(Date) # this also handles the case for DateTime
+      elsif datetime.is_a?(Date) # this also handles the case of a DateTime
         ((datetime.strftime("%s").to_i) * 1000).to_i
       end
       
@@ -83,7 +88,7 @@ module RubyAMF
           # and write them to the stream if they take no arguments
           method_def = obj.method(method_name)
           if method_def.arity == 0
-            write_string method_name
+            method_name.write_amf self
             obj.send(method_name).write_amf self
           end
         end
@@ -92,8 +97,8 @@ module RubyAMF
     end
     
     def write_array array
-      output_stream << ARRAY_MARKER << LOW_BIT_OF_1
-      output_stream << pack_int(array.size)
+      output_stream << ARRAY_MARKER
+      output_stream << header_for_array( array )
       # RubyAMF only encodes strict, dense arrays by the AMF spec
       # so the dynamic portion is empty
       output_stream << CLOSE_DYNAMIC_ARRAY
@@ -123,13 +128,38 @@ module RubyAMF
       number
     end
     
-  protected
+    # expects argument to be a non-empty string for which
+    # there is no reference.
+    # see 1.3.2 and 3.8 in the published AMF spec
+    # header is a low bit of 1 with the length occupying
+    # the remaining bits
+    def header_for_string string
+      header = string.length << 1 # make room for a low bit of 1
+      header = header | 1 # set the low bit to 1
+      pack_int header
+    end
     
+    # header is a low bit of 1 with the length occupying
+    # the remaining bits
+    def header_for_array array
+      header = array.length << 1 # make room for a low bit of 1
+      header = header | 1 # set the low bit to 1
+      pack_int header
+    end
+    
+    # references have a low bit of 0 with the remaining
+    # bits being the reference
+    def header_for_reference index
+      header = index << 1 # shift value left to leave a low bit of 0
+      pack_int header
+    end
+    
+  protected
+  
     def reference_string str
       return @string_references[str] if @string_references[str]
       
-      @string_counter += 1
-      @string_references[str] = pack_int( @string_counter )
+      @string_references[str] = @string_counter += 1
       return nil
     end
     

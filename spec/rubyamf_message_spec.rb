@@ -87,13 +87,19 @@ describe RubyAMF::Message do
       end
 
       it "should serialize a simple string" do
-        @message.write "Hello World!"
-        @message.output_stream.should == "#{ENCODED_STRING_MARKER}Hello World!"
+        s = "Hello World!"
+        @message.write s
+        expected_message = "#{ENCODED_STRING_MARKER}" << expected_encoded_header_for( s )
+        expected_message << s
+        @message.output_stream.should == expected_message
       end
 
       it "should serialize a symbol as a string" do
         @message.write :foo
-        @message.output_stream.should == "#{ENCODED_STRING_MARKER}foo"
+        s = :foo.to_s
+        expected_message = "#{ENCODED_STRING_MARKER}" << expected_encoded_header_for( s )
+        expected_message << s
+        @message.output_stream.should == expected_message
       end
 
       it "should serialize Dates and DateTimes" do
@@ -137,7 +143,6 @@ describe RubyAMF::Message do
     describe "objects" do
 
       it "should serialize an unmapped object as a dynamic anonymous object" do
-
         # A non-mapped object is any object not explicitly mapped
         # it should be encoded as a dynamic anonymous object with 
         # dynamic properties for all "messages" (public methods)
@@ -162,21 +167,21 @@ describe RubyAMF::Message do
         obj.nil_property = nil
       
         @message.write obj
-        # can't depend on order
+        # can't depend on order, so match parts
         # open object
         @message.output_stream.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
         # close object
         @message.output_stream.should match(/.*#{ENCODED_CLOSE_OBJECT_MARKER}$/)
         
         # encodable properties
-        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}property_one#{ENCODED_STRING_MARKER}foo/)
-        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}property_two#{ENCODED_INTEGER_MARKER}#{ENCODED_ONE}/)
-        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}another_public_property#{ENCODED_STRING_MARKER}a_public_value/)
-        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}nil_property#{ENCODED_NULL_MARKER}/)
+        @message.output_stream.should match(/#{expected_encoded_string_for('property_one')}#{expected_encoded_string_for(obj.property_one)}/)
+        @message.output_stream.should match(/#{expected_encoded_string_for('property_two')}#{ENCODED_INTEGER_MARKER}#{ENCODED_ONE}/)
+        @message.output_stream.should match(/#{expected_encoded_string_for('another_public_property')}#{expected_encoded_string_for(obj.another_public_property)}/)
+        @message.output_stream.should match(/#{expected_encoded_string_for('nil_property')}#{ENCODED_NULL_MARKER}/)
         
         # non-encodable properties
-        @message.output_stream.should_not match(/#{ENCODED_STRING_MARKER}method_with_arg/)
-        @message.output_stream.should_not match(/#{ENCODED_STRING_MARKER}read_only_prop/)
+        @message.output_stream.should_not match(/#{expected_encoded_string_for('method_with_arg')}/)
+        @message.output_stream.should_not match(/#{expected_encoded_string_for('read_only_prop')}/)
       end
       
       it "should serialize a hash as a dynamic anonymous object" do
@@ -192,17 +197,19 @@ describe RubyAMF::Message do
         @message.output_stream.should match(/.*#{ENCODED_CLOSE_OBJECT_MARKER}$/)
 
         # encodable properties
-        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}foo#{ENCODED_STRING_MARKER}bar/)
-        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}foo#{ENCODED_INTEGER_MARKER}#{ENCODED_42}/)
+        @message.output_stream.should match(/#{expected_encoded_string_for('foo')}#{expected_encoded_string_for(hash[:foo])}/)
+        @message.output_stream.should match(/#{expected_encoded_string_for('answer')}#{ENCODED_INTEGER_MARKER}#{ENCODED_42}/)
       end
       
       it "should serialize an open struct as a dynamic anonymous object"
+      
+      it "should serialize an empty array"
       
       it "should serialize an array of primatives" do
         a = [1, 2, 3, 4, 5]
         @message.write a
         encoded_array = "#{ENCODED_ARRAY_MARKER}"
-        encoded_array << "#{ENCODED_ONE}\005" # U29A-value - a low byte of one and a 5 to denote the length of the array
+        encoded_array << expected_encoded_header_for( a ) # U29A-value - a low byte of one and a 5 to denote the length of the array
         encoded_array << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
         # the encoded values of the array
         encoded_array << "#{ENCODED_INTEGER_MARKER}\001#{ENCODED_INTEGER_MARKER}\002#{ENCODED_INTEGER_MARKER}\003#{ENCODED_INTEGER_MARKER}\004#{ENCODED_INTEGER_MARKER}\005"
@@ -210,6 +217,7 @@ describe RubyAMF::Message do
       end
       
       it "should serialize an array of mixed objects" do
+        
         h1 = {:foo_one => "bar_one"}
         h2 = {:foo_two => "bar_two"}
         class SimpleObj
@@ -221,20 +229,20 @@ describe RubyAMF::Message do
         
         @message.write a
         encoded_array = "#{ENCODED_ARRAY_MARKER}"
-        encoded_array << "#{ENCODED_ONE}\003" # U29A-value - a low byte of one and a 3 to denote the length of the array
+        encoded_array << expected_encoded_header_for( a ) # U29A-value - a low byte of one and a 3 to denote the length of the array
         encoded_array << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
         # the encoded values of the array
         # h1
         encoded_array << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
-        encoded_array << "#{ENCODED_STRING_MARKER}foo_one#{ENCODED_STRING_MARKER}bar_one"
+        encoded_array << "#{expected_encoded_string_for('foo_one')}#{expected_encoded_string_for('bar_one')}"
         encoded_array << "#{ENCODED_CLOSE_OBJECT_MARKER}"
         # h2
         encoded_array << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
-        encoded_array << "#{ENCODED_STRING_MARKER}foo_two#{ENCODED_STRING_MARKER}bar_two"
+        encoded_array << "#{expected_encoded_string_for('foo_two')}#{expected_encoded_string_for('bar_two')}"
         encoded_array << "#{ENCODED_CLOSE_OBJECT_MARKER}"
         # so
         encoded_array << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
-        encoded_array << "#{ENCODED_STRING_MARKER}foo_three#{ENCODED_INTEGER_MARKER}#{ENCODED_42}"
+        encoded_array << "#{expected_encoded_string_for('foo_three')}#{ENCODED_INTEGER_MARKER}#{ENCODED_42}"
         encoded_array << "#{ENCODED_CLOSE_OBJECT_MARKER}"
         
         @message.output_stream.should == encoded_array
@@ -251,36 +259,44 @@ describe RubyAMF::Message do
           attr_accessor :str
         end
         
-        s1 = "Foo"
-        s2 = "Bar"
+        foo = "Foo"
+        bar = "Bar"
         sc = StringCarrier.new
-        sc.str = s1
+        sc.str = foo
         
-        @message.write s1
-        expected_message = "#{ENCODED_STRING_MARKER}Foo"
+        @message.write foo
+        expected_message = expected_encoded_string_for( foo )
 
-        @message.write s2
-        expected_message << "#{ENCODED_STRING_MARKER}Bar"
-
-        @message.write s1
-        expected_message << "#{ENCODED_STRING_MARKER}\000" # first reference of Foo
-
-        @message.write s2
-        expected_message << "#{ENCODED_STRING_MARKER}\001" # first reference of Bar
-
-        @message.write s1
-        expected_message << "#{ENCODED_STRING_MARKER}\000" # second reference of Foo
-
+        @message.write bar
+        expected_message << expected_encoded_string_for( bar )
+        
+        @message.write foo
+        expected_message << expected_encoded_string_reference( 0 ) # first reference of Foo
+        
+        @message.write bar
+        expected_message << expected_encoded_string_reference( 1 ) # first reference of Bar
+        
+        @message.write foo
+        expected_message << expected_encoded_string_reference( 0 ) # second reference of Foo
+        
         @message.write sc
         expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
-        expected_message << "#{ENCODED_STRING_MARKER}str#{ENCODED_STRING_MARKER}\000" # third reference Foo
+        expected_message << "#{expected_encoded_string_for('str')}" << expected_encoded_string_reference( 0 ) # third reference Foo
         expected_message << "#{ENCODED_CLOSE_OBJECT_MARKER}"
         
         @message.output_stream.should == expected_message
       end
       
       it "should not reference the empty string" do
+        # AMF Spec 1.3.2: the empty string is never referenced
+        empty = ""
         
+        @message.write empty
+        expected_message = "#{ENCODED_STRING_MARKER}#{ENCODED_EMPTY_STRING}"
+        @message.write empty
+        expected_message << "#{ENCODED_STRING_MARKER}#{ENCODED_EMPTY_STRING}"
+
+        @message.output_stream.should == expected_message
       end
       
       it "should reference objects"
@@ -291,8 +307,6 @@ describe RubyAMF::Message do
   end
   
   describe "when deserializing" do
-    
-    it "should be able to clear the input stream"
     
   end
 
