@@ -22,18 +22,4 @@ def expected_int_value_for number
   number
 end
 
-class NonMappedObject
-  attr_accessor :property_one
-  attr_accessor :property_two
-  attr_accessor :nil_property
-  attr_writer :read_only_prop
-  
-  def another_public_property
-    'foo'
-  end
-  
-  def method_with_arg arg='foo'
-    arg
-  end
-end
 

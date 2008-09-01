@@ -14,6 +14,7 @@ describe RubyAMF do
   
   describe "when implementing RubyAMF features" do
     
+    it "should serialize an array as an ArrayCollection"
     it "should serialize a pre-mapped object"
     it "should optionally camelize snake_cased properties"
     

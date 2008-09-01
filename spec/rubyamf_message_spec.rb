@@ -142,6 +142,20 @@ describe RubyAMF::Message do
         # it should be encoded as a dynamic anonymous object with 
         # dynamic properties for all "messages" (public methods)
         # that have an arity of 0, meaning that they take no arguments
+        class NonMappedObject
+          attr_accessor :property_one
+          attr_accessor :property_two
+          attr_accessor :nil_property
+          attr_writer :read_only_prop
+
+          def another_public_property
+            'a_public_value'
+          end
+
+          def method_with_arg arg='foo'
+            arg
+          end
+        end
         obj = NonMappedObject.new
         obj.property_one = 'foo'
         obj.property_two = 1
@@ -157,7 +171,7 @@ describe RubyAMF::Message do
         # encodable properties
         @message.output_stream.should match(/#{ENCODED_STRING_MARKER}property_one#{ENCODED_STRING_MARKER}foo/)
         @message.output_stream.should match(/#{ENCODED_STRING_MARKER}property_two#{ENCODED_INTEGER_MARKER}#{ENCODED_ONE}/)
-        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}another_public_property#{ENCODED_STRING_MARKER}foo/)
+        @message.output_stream.should match(/#{ENCODED_STRING_MARKER}another_public_property#{ENCODED_STRING_MARKER}a_public_value/)
         @message.output_stream.should match(/#{ENCODED_STRING_MARKER}nil_property#{ENCODED_NULL_MARKER}/)
         
         # non-encodable properties
@@ -225,14 +239,50 @@ describe RubyAMF::Message do
         
         @message.output_stream.should == encoded_array
       end
-      it "should serialize an ArrayCollection"
+
       it "should serialize a deep graph"
 
     end
 
     describe "and implementing the AMF Spec" do
 
-      it "should reference strings"
+      it "should reference strings" do
+        class StringCarrier
+          attr_accessor :str
+        end
+        
+        s1 = "Foo"
+        s2 = "Bar"
+        sc = StringCarrier.new
+        sc.str = s1
+        
+        @message.write s1
+        expected_message = "#{ENCODED_STRING_MARKER}Foo"
+
+        @message.write s2
+        expected_message << "#{ENCODED_STRING_MARKER}Bar"
+
+        @message.write s1
+        expected_message << "#{ENCODED_STRING_MARKER}\000" # first reference of Foo
+
+        @message.write s2
+        expected_message << "#{ENCODED_STRING_MARKER}\001" # first reference of Bar
+
+        @message.write s1
+        expected_message << "#{ENCODED_STRING_MARKER}\000" # second reference of Foo
+
+        @message.write sc
+        expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
+        expected_message << "#{ENCODED_STRING_MARKER}str#{ENCODED_STRING_MARKER}\000" # third reference Foo
+        expected_message << "#{ENCODED_CLOSE_OBJECT_MARKER}"
+        
+        @message.output_stream.should == expected_message
+      end
+      
+      it "should not reference the empty string" do
+        
+      end
+      
       it "should reference objects"
       it "should reference dates"
 

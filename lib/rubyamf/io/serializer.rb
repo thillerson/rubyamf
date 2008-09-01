@@ -11,9 +11,11 @@ module RubyAMF
     end
     
     def write value
-      @integer_cache  = {}
-      @floats_cache   = {}
+      @integer_cache      ||= {}
+      @floats_cache       ||= {}
       
+      @string_counter     ||= -1
+      @string_references  ||= {}
       value.write_amf self
     end
     
@@ -48,7 +50,8 @@ module RubyAMF
     end
     
     def write_string string
-      output_stream << STRING_MARKER << string
+      reference = reference_string(string) || string
+      output_stream << STRING_MARKER << reference
     end
     
     def write_date datetime
@@ -118,6 +121,16 @@ module RubyAMF
           [number & 0xff].pack('c')
       end
       number
+    end
+    
+  protected
+    
+    def reference_string str
+      return @string_references[str] if @string_references[str]
+      
+      @string_counter += 1
+      @string_references[str] = pack_int( @string_counter )
+      return nil
     end
     
   end
