@@ -12,7 +12,7 @@ describe RubyAMF do
     @message = RubyAMF::Message.new
   end
   
-  describe "when implementing RubyAMF features" do
+  describe "features" do
     
     it "should serialize an array as an ArrayCollection"
     it "should serialize a pre-mapped object"
