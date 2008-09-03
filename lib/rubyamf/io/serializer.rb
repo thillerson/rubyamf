@@ -16,6 +16,10 @@ module RubyAMF
       
       @string_counter     ||= -1
       @string_references  ||= {}
+      
+      @object_counter     ||= -1
+      @object_references  ||= {}
+      
       value.write_amf self
     end
     
@@ -60,7 +64,7 @@ module RubyAMF
     end
     
     def write_date datetime
-      output_stream << DATE_MARKER << ONE
+      output_stream << DATE_MARKER
       
       seconds = if datetime.is_a?(Time)
         datetime.utc unless datetime.utc?
@@ -69,11 +73,22 @@ module RubyAMF
         ((datetime.strftime("%s").to_i) * 1000).to_i
       end
       
-      write_double seconds, false
+      if index = reference_object(seconds)
+        output_stream << header_for_reference(index)
+      else
+        output_stream << ONE
+        write_double seconds, false
+      end
+      
     end
     
     def write_object obj
       output_stream << OBJECT_MARKER
+      
+      if index = reference_object( obj )
+        output_stream << header_for_reference(index) and return
+      end
+      
       # Dynamic, Anonymous Object - very simple heuristics
       if obj.is_a? Hash
         output_stream << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
@@ -93,11 +108,16 @@ module RubyAMF
           end
         end
       end
-      output_stream << CLOSE_OBJECT
+      output_stream << CLOSE_DYNAMIC_OBJECT
     end
     
     def write_array array
       output_stream << ARRAY_MARKER
+
+      if index = reference_object( array )
+        output_stream << header_for_reference(index) and return
+      end
+      
       output_stream << header_for_array( array )
       # RubyAMF only encodes strict, dense arrays by the AMF spec
       # so the dynamic portion is empty
@@ -156,12 +176,19 @@ module RubyAMF
     
   protected
   
-    def reference_string str
-      return @string_references[str] if @string_references[str]
-      
-      @string_references[str] = @string_counter += 1
-      return nil
-    end
-    
+   def reference_string str
+     return @string_references[str] if @string_references[str]
+     
+     @string_references[str] = @string_counter += 1
+     return nil
+   end
+   
+   def reference_object obj
+     return @object_references[obj] if @object_references[obj]
+     
+     @object_references[obj] = @object_counter += 1
+     return nil
+   end
+  
   end
 end
