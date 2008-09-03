@@ -20,6 +20,8 @@ module RubyAMF
       @object_counter     ||= -1
       @object_references  ||= {}
       
+      @empty_array_refs   ||= {}
+      
       value.write_amf self
     end
     
@@ -175,19 +177,39 @@ module RubyAMF
     end
     
   protected
-  
+   
+   # if string has been referenced, returns the index of the reference
+   # in the implicit string reference tabel. If no reference is found
+   # sets the reference to the next index in the implicit strings table
+   # and returns nil
    def reference_string str
-     return @string_references[str] if @string_references[str]
-     
-     @string_references[str] = @string_counter += 1
-     return nil
+     @string_references.fetch(str) do |missed_fetch|
+       @string_references[missed_fetch] = @string_counter += 1
+       nil
+     end
    end
    
+   # if object has been referenced, returns the index of the reference
+   # in the implicit object reference table. If no reference is found
+   # sets the reference to the next index in the implicit objects table
+   # and returns nil.
+   # if the object is an empty array, we need to make sure that we 
+   # don't return a reference unless the object ids are the same,
+   # since eql? returns true if the contents of the array are the same
+   # and hash uses eql? to compare keys, which would give false positives
+   # in all cases.
    def reference_object obj
-     return @object_references[obj] if @object_references[obj]
-     
-     @object_references[obj] = @object_counter += 1
-     return nil
+     if obj == []
+       @empty_array_refs.fetch(obj.object_id) do |missed_fetch|
+         @empty_array_refs[missed_fetch] = @object_counter += 1
+         nil
+       end
+     else
+       @object_references.fetch(obj) do |missed_fetch|
+         @object_references[missed_fetch] = @object_counter += 1
+         nil
+       end
+     end
    end
   
   end

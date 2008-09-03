@@ -86,7 +86,6 @@ end
 
 class BeautifulSoup
   def write_amf(message)
-    message.output_stream << RubyAMF::Constants::XML
     message.write_xml(self)
   end
 end
@@ -94,7 +93,6 @@ end
 module REXML
   class Document
     def write_amf(message)
-      message.output_stream << RubyAMF::Constants::XML
       message.write_xml(self)
     end
   end
