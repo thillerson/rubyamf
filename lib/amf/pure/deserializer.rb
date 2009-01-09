@@ -1,7 +1,6 @@
 module AMF
-  module Deserializer
-    
-    attr_accessor :input_stream
-    
+  module Pure
+    class Deserializer
+    end
   end
 end

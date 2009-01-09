@@ -2,20 +2,6 @@ require 'amf/version'
 
 module AMF
   class << self
-    # If _object_ is string-like deserialize the string and return the deserialized result
-    # as a Ruby data structure. Otherwise serialize a AMF text from the Ruby
-    # data structure object and return it.
-    #
-    # The _opts_ argument is passed through to serialize/deserialize respectively, see
-    # serialize and deserialize for their documentation.
-    def [](object)
-      if object.respond_to? :to_str
-        AMF.deserialize(object)
-      else
-        AMF.serialize(object)
-      end
-    end
-
     # Returns the AMF deserializer class, that is used by AMF. This might be either
     # AMF::Ext::Deserializer or AMF::Pure::Deserializer.
     attr_reader :deserializer
