@@ -3,10 +3,11 @@ require File.dirname(__FILE__) + '/expected_values.rb'
 require File.dirname(__FILE__) + '/amf_helpers.rb'
 
 require 'date'
+require 'rexml/document'
 require 'rubygems'
 require 'ruby-debug'
 
-describe AMF::PURE::SERIALIZER do
+describe AMF do
   describe "when serializing" do
     describe "simple messages" do
 
@@ -112,10 +113,6 @@ describe AMF::PURE::SERIALIZER do
 
       #BAH! Who sends XML over AMF?
       it "should serialize a REXML document"
-
-      #BAH! Who sends XML over AMF?
-      it "should serialize some Beautiful Soup"
-
     end
 
     describe "objects" do

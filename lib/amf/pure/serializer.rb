@@ -1,6 +1,7 @@
 require 'constants'
 require 'date'
 require 'bigdecimal'
+require 'rexml/document'
 
 module AMF
   module Pure
@@ -17,108 +18,100 @@ module AMF
         
         @empty_array_refs   ||= {}
       end
-            
-      module SerializerMethods
-        class NilClass
+                  
+      module SerializerMethods 
+        module NilClass
           def to_amf(*)
-            write_null
+            write null
           end
         end
         
-        class FalseClass
+        module FalseClass
           def to_amf(*)
             write_false
           end
         end
         
-        class TrueClass
+        module TrueClass
           def to_amf(*)
             write_true
           end
         end
         
-        class Bignum
+        module Bignum
           def to_amf(*)
             write_double self
           end
         end
         
-        class Integer
+        module Integer
           def to_amf(*)
             write_number self
           end
         end
         
-        class Float
+        module Float
           def to_amf(*)
             write_double self
           end
         end
         
-        class BigDecimal
+        module BigDecimal
           def to_amf(*)
-            write_double self.to_f
+            self.to_f.to_amf
           end
         end
         
-        class String
+        module String
           def to_amf(*)
             write_string self
           end
         end
         
-        class Symbol
+        module Symbol
           def to_amf(*)
-            write_string self.to_s
+            self.to_s.to_amf
           end
         end
         
-        class Array
+        module Array
           def to_amf(*)
             write_array self
           end
         end
         
-        class Hash
+        module Hash
           def to_amf(*)
             write_object self
           end
         end
         
-        class Time
+        module Time
           def to_amf(*)
             write_date self
           end
         end
         
-        class Date
+        module Date
           def to_amf(*)
             write_date self
           end
         end
         
-        class Object
+        module Object
           def to_amf(*)
             write_object self
-          end
-        end
-        
-        class BeautifulSoup
-          def to_amf(*)
-            write_xml self
           end
         end
         
         module REXML
           class Document
             def to_amf(*)
-             write_xml self
+              write_xml self
             end
           end
         end
-      end
-      
-      protected
+      end 
       
       def write_null
         NULL_MARKER
@@ -179,7 +172,7 @@ module AMF
           output << header_for_reference(index)
         else
           output << ONE
-          output << write_double seconds, false 
+          output << write_double(seconds, false) 
         end
       end
       
@@ -309,7 +302,6 @@ module AMF
           end
         end
       end
-      
     end
   end
 end
