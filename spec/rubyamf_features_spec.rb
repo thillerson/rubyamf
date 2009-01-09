@@ -6,10 +6,10 @@ require 'date'
 require 'rubygems'
 require 'ruby-debug'
 
-describe RubyAMF do
+describe AMF do
   
   before do
-    @message = RubyAMF::Message.new
+    @message = AMF::Message.new
   end
   
   describe "features" do

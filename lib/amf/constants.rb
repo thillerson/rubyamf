@@ -1,4 +1,4 @@
-module RubyAMF
+module AMF
   module Constants
   
     # Standard Types Markers

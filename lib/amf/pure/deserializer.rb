@@ -1,4 +1,4 @@
-module RubyAMF
+module AMF
   module Deserializer
     
     attr_accessor :input_stream

@@ -1,4 +1,4 @@
-module RubyAMF
+module AMF
   module VERSION #:nodoc:
     MAJOR = 0
     MINOR = 0
