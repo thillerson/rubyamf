@@ -6,10 +6,10 @@ require 'date'
 require 'rubygems'
 require 'ruby-debug'
 
-describe RubyAMF::Message do
+describe AMF::Message do
   
   before do
-    @message = RubyAMF::Message.new
+    @message = AMF::Message.new
   end
   
   describe "when deserializing" do

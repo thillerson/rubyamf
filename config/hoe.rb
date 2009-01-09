@@ -1,10 +1,10 @@
-require 'rubyamf/version'
+require 'amf/version'
 
 AUTHOR = 'Tony Hillerson'  # can also be an array of Authors
 EMAIL = "tony.hillerson@effectiveui.com"
-DESCRIPTION = "RubyAMF is a gem that knows how to serialize and deserialize AMF messages (http://en.wikipedia.org/wiki/Action_Message_Format)."
-GEM_NAME = 'rubyamf' # what ppl will type to install your gem
-RUBYFORGE_PROJECT = 'rubyamf' # The unix name for your project
+DESCRIPTION = "AMF is a gem that knows how to serialize and deserialize AMF messages (http://en.wikipedia.org/wiki/Action_Message_Format)."
+GEM_NAME = 'amf' # what ppl will type to install your gem
+RUBYFORGE_PROJECT = 'amf' # The unix name for your project
 HOMEPATH = "http://#{RUBYFORGE_PROJECT}.rubyforge.org"
 DOWNLOAD_PATH = "http://rubyforge.org/projects/#{RUBYFORGE_PROJECT}"
 EXTRA_DEPENDENCIES = [
@@ -34,8 +34,8 @@ end
 REV = nil
 # UNCOMMENT IF REQUIRED:
 # REV = YAML.load(`svn info`)['Revision']
-VERS = RubyAMF::VERSION::STRING + (REV ? ".#{REV}" : "")
-RDOC_OPTS = ['--quiet', '--title', 'rubyamf documentation',
+VERS = AMF::VERSION::STRING + (REV ? ".#{REV}" : "")
+RDOC_OPTS = ['--quiet', '--title', 'amf documentation',
     "--opname", "index.html",
     "--line-numbers",
     "--main", "README",

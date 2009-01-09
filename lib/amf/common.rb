@@ -1,0 +1,94 @@
+require 'amf/version'
+
+module AMF
+  class << self
+    # If _object_ is string-like deserialize the string and return the deserialized result
+    # as a Ruby data structure. Otherwise serialize a AMF text from the Ruby
+    # data structure object and return it.
+    #
+    # The _opts_ argument is passed through to serialize/deserialize respectively, see
+    # serialize and deserialize for their documentation.
+    def [](object)
+      if object.respond_to? :to_str
+        AMF.deserialize(object)
+      else
+        AMF.serialize(object)
+      end
+    end
+
+    # Returns the AMF deserializer class, that is used by AMF. This might be either
+    # AMF::Ext::Deserializer or AMF::Pure::Deserializer.
+    attr_reader :deserializer
+
+    # Set the AMF deserializer class _deserializer_ to be used by AMF.
+    def deserializer=(deserializer) # :nodoc:
+      @deserializer = deserializer
+      remove_const :Deserializer if const_defined? :Deserializer
+      const_set :Deserializer, deserializer
+    end
+    
+    # Deserialize the AMF string _source_ into a Ruby data structure and return it.
+    def deserialize(source)
+      AMF.deserializer.new(source).deserialize
+    end
+    
+    # Returns the AMF serializer modul, that is used by AMF. This might be
+    # either AMF::Ext::Serializer or AMF::Pure::Serializer.
+    attr_reader :serializer
+
+    # Set the AMF serializer class _serializer_ to be used by AMF.
+    def serializer=(serializer) # :nodoc:
+      @serializer = serializer
+      serializer_methods = serializer::SerializerMethods
+      for const in serializer_methods.constants
+        klass = deep_const_get(const)
+        modul = serializer_methods.const_get(const)
+        klass.class_eval do
+          instance_methods(false).each do |m|
+            m.to_s == 'to_amf' and remove_method m
+          end
+          include modul
+        end
+      end
+    end
+    
+    # Serialize the Ruby data structure _obj_ into a single line AMF
+    def serialize(obj)
+      obj.to_amf()
+    end
+    
+    # Return the constant located at _path_. The format of _path_ has to be
+    # either ::A::B::C or A::B::C. In any case A has to be located at the top
+    # level (absolute namespace path?). If there doesn't exist a constant at
+    # the given path, an ArgumentError is raised.
+    def deep_const_get(path) # :nodoc:
+      path = path.to_s
+      path.split(/::/).inject(Object) do |p, c|
+        case
+        when c.empty?             then p
+        when p.const_defined?(c)  then p.const_get(c)
+        else                      raise ArgumentError, "can't find const #{path}"
+        end
+      end
+    end
+
+    # This is create identifier, that is used to decide, if the _amf_create_
+    # hook of a class should be called. It defaults to 'amf_class'.
+    attr_accessor :create_id
+  end
+  
+  self.create_id = 'amf_class'
+
+  # The base exception for AMF errors.
+  class AMFError < StandardError; end
+end
+
+class ::Class
+  # Returns true, if this class can be used to create an instance
+  # from a serialized AMF string. The class has to implement a class
+  # method _amf_create_ that expects a hash as first parameter, which includes
+  # the required data.
+  def amf_creatable?
+    respond_to?(:amf_create)
+  end
+end
