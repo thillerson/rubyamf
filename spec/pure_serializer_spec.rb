@@ -164,7 +164,7 @@ describe AMF do
         hash[:foo] = "bar"
         hash[:answer] = 42
         
-        output hash.to_amf
+        output = hash.to_amf
         # can't depend on order
         # open object
         output.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
