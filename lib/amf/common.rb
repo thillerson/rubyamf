@@ -45,7 +45,7 @@ module AMF
       else
         state = State.new
       end
-      obj.to_amf()
+      obj.to_amf(state)
     end
     
     # Return the constant located at _path_. The format of _path_ has to be
