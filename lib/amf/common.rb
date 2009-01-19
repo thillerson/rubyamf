@@ -14,8 +14,8 @@ module AMF
     end
     
     # Deserialize the AMF string _source_ into a Ruby data structure and return it.
-    def deserialize(source)
-      AMF.deserializer.new(source).deserialize
+    def deserialize(source, opts = {})
+      AMF.deserializer.new(source, opts).deserialize
     end
     
     # Returns the AMF serializer modul, that is used by AMF. This might be
@@ -39,7 +39,12 @@ module AMF
     end
     
     # Serialize the Ruby data structure _obj_ into a single line AMF
-    def serialize(obj)
+    def serialize(obj, state = nil)
+      if state
+        state = State.from_state(state)
+      else
+        state = State.new
+      end
       obj.to_amf()
     end
     
@@ -58,6 +63,10 @@ module AMF
       end
     end
 
+    # Returns the JSON generator state class, that is used by JSON. This might
+    # be either JSON::Ext::Generator::State or JSON::Pure::Generator::State.
+    attr_accessor :state
+    
     # This is create identifier, that is used to decide, if the _amf_create_
     # hook of a class should be called. It defaults to 'amf_class'.
     attr_accessor :create_id
