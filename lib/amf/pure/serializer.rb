@@ -146,36 +146,31 @@ module AMF
     end
   end
   
-  def write_integer(number, state = nil)
+  def write_integer(integer, state = nil)
     output = ''
     output << INTEGER_MARKER
-    if state
-      output << (state.integer_cache[number] ||= pack_int(number))
-    else
-      output << pack_int(number)
-    end
+    output << pack_integer(integer)
     output
   end
     
   def write_double(double, state = nil, include_marker=true)
     output = ''
     output << DOUBLE_MARKER if include_marker
-    if state
-      output << (state.float_cache[double] ||= [double].pack('G'))
-    else
-      output << [double].pack('G')
-    end
+    output << pack_double(double, state)
     output
   end
   
   def write_string(string, state = nil)
     output = ''
     output << STRING_MARKER
-    output << EMPTY_STRING and return if string == ''
-    if index = string_cache(string, state)
-      output << header_for_cache( index )
+    if string == ''
+      output << EMPTY_STRING
+    elsif index = string_cache(string, state)
+      output << header_for_cache(index, state)
     else
-      output << header_for_string( string ) << string
+      cache_string(string, state)
+      output << header_for_string(string, state) 
+      output << string
     end
   end
   
@@ -191,8 +186,9 @@ module AMF
     end
     
     if index = object_cache(seconds, state)
-      output << header_for_cache(index)
+      output << header_for_cache(index, state)
     else
+      cache_object(seconds, state)
       output << ONE
       output << write_double(seconds, state, false)
     end
@@ -203,31 +199,33 @@ module AMF
     output << OBJECT_MARKER
     
     if index = object_cache( obj, state )
-      output << header_for_cache(index) and return
-    end
-    
-    state ||= AMF::Pure::Serializer::State.new
-    
-    # Dynamic, Anonymous Object - very simple heuristics
-    if obj.is_a? Hash
-      output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
-      obj.each do |key, value|
-        output << key.to_amf(state) # easy for both string and symbol keys
-        output << value.to_amf(state)
-      end
-    else # unmapped object
-      output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
-      # find all public methods belonging to this object alone
-      obj.public_methods(false).each do |method_name|
-        # and write them to the stream if they take no arguments
-        method_def = obj.method(method_name)
-        if method_def.arity == 0
-          output << method_name.to_amf(state)
-          output << obj.send(method_name).to_amf(state)
+      output << header_for_cache(index, state)
+    else
+      state ||= AMF::Pure::Serializer::State.new  
+      # Dynamic, Anonymous Object - very simple heuristics
+      output << DYNAMIC_OBJECT
+      if obj.is_a? Hash
+        output << ANONYMOUS_OBJECT
+        cache_object(obj, state)
+        obj.each do |key, value|
+          output << key.to_amf(state) # easy for both string and symbol keys
+          output << value.to_amf(state)
+        end
+      else # unmapped object
+        output << ANONYMOUS_OBJECT
+        # find all public methods belonging to this object alone
+        obj.public_methods(false).each do |method_name|
+          # and write them to the stream if they take no arguments
+          method_def = obj.method(method_name)
+          if method_def.arity == 0
+            output << method_name.to_amf(state)
+            output << obj.send(method_name).to_amf(state)
+          end
         end
       end
+      output << CLOSE_DYNAMIC_OBJECT
     end
-    output << CLOSE_DYNAMIC_OBJECT
+    output
   end
   
   def write_array(array, state = nil)
@@ -235,10 +233,10 @@ module AMF
     output << ARRAY_MARKER
   
     if index = object_cache( array, state )
-      output << header_for_cache(index)
+      output << header_for_cache(index, state)
     else
       state ||= AMF::Pure::Serializer::State.new
-      output << header_for_array( array )
+      output << header_for_array(array, state)
       # AMF only encodes strict, dense arrays by the AMF spec
       # so the dynamic portion is empty
       output << CLOSE_DYNAMIC_ARRAY
@@ -250,49 +248,65 @@ module AMF
   end
   
   # expects argument to be a non-empty string for which
-  # there is no reference.
+  # there is no reference
   # see 1.3.2 and 3.8 in the published AMF spec
   # header is a low bit of 1 with the length occupying
   # the remaining bits
-  def header_for_string string
+  def header_for_string(string, state = nil)
     header = string.length << 1 # make room for a low bit of 1
     header = header | 1 # set the low bit to 1
-    pack_int header
+    pack_integer(header, state)
   end
   
   # header is a low bit of 1 with the length occupying
   # the remaining bits
-  def header_for_array array
+  def header_for_array(array, state = nil)
     header = array.length << 1 # make room for a low bit of 1
     header = header | 1 # set the low bit to 1
-    pack_int header
+    pack_integer(header, state)
   end
   
   # references have a low bit of 0 with the remaining
   # bits being the reference
-  def header_for_cache index
+  def header_for_cache(index, state = nil)
     header = index << 1 # shift value left to leave a low bit of 0
-    pack_int header
+    pack_integer(header, state)
   end
   
-  def pack_int number
-    number = number & 0x1fffffff
-    if(number < 0x80)
-      [number].pack('c')
-    elsif(number < 0x4000)
-      [number >> 7 & 0x7f | 0x80].pack('c')+
-        [number & 0x7f].pack('c')
-    elsif(number < 0x200000)
-      [number >> 14 & 0x7f | 0x80].pack('c')+
-        [number >> 7 & 0x7f | 0x80].pack('c')+
-        [number & 0x7f].pack('c')
+  def pack_integer(integer, state = nil)
+    if state
+      state.integer_cache[integer] ||= pack_integer_helper(integer)
     else
-      [number >> 22 & 0x7f | 0x80].pack('c')+
-        [number >> 15 & 0x7f | 0x80].pack('c')+
-        [number >> 8 & 0x7f | 0x80].pack('c')+
-        [number & 0xff].pack('c')
+      pack_integer_helper(integer)
     end
-    number
+  end
+  
+  def pack_integer_helper(integer)
+    integer = integer & 0x1fffffff
+    if(integer < 0x80)
+      [integer].pack('c')
+    elsif(integer < 0x4000)
+      [integer >> 7 & 0x7f | 0x80].pack('c')+
+        [integer & 0x7f].pack('c')
+    elsif(integer < 0x200000)
+      [integer >> 14 & 0x7f | 0x80].pack('c')+
+        [integer >> 7 & 0x7f | 0x80].pack('c')+
+        [integer & 0x7f].pack('c')
+    else
+      [integer >> 22 & 0x7f | 0x80].pack('c')+
+        [integer >> 15 & 0x7f | 0x80].pack('c')+
+        [integer >> 8 & 0x7f | 0x80].pack('c')+
+        [integer & 0xff].pack('c')
+    end
+    integer
+  end
+  
+  def pack_double(double, state = nil)
+    if state
+      (state.float_cache[double] ||= [double].pack('G'))
+    else
+      [double].pack('G')
+    end
   end
    
   # if string has been referenced, returns the index of the reference
@@ -311,6 +325,13 @@ module AMF
     end
   end
   
+  def cache_string(string, state = nil)
+    if state
+      state.string_cache[string] = state.string_counter
+      state.string_counter += 1
+    end
+  end
+  
   # if object has been referenced, returns the index of the reference
   # in the implicit object reference table. If no reference is found
   # sets the reference to the next index in the implicit objects table
@@ -324,10 +345,10 @@ module AMF
     #TODO: shorten if statement
     if state
       if obj == []
-          state.empty_array_cache.fetch(obj.object_id) do |missed_fetch|
-            state.empty_array_cache[missed_fetch] = state.object_counter += 1
-            nil
-          end
+        state.empty_array_cache.fetch(obj.object_id) do |missed_fetch|
+          state.empty_array_cache[missed_fetch] = state.object_counter += 1
+          nil
+        end
       else
         state.object_cache.fetch(obj) do |missed_fetch|
           state.object_cache[missed_fetch] = state.object_counter += 1
@@ -338,4 +359,12 @@ module AMF
       nil
     end
   end
+  
+  def cache_object(object, state = nil)
+    if state
+      state.object_cache[object] = state.object_counter
+      state.object_counter += 1
+    end
+  end
+  
 end
