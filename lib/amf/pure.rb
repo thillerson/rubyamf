@@ -1,6 +1,6 @@
-require 'amf/common'
 require 'amf/pure/deserializer'
 require 'amf/pure/serializer'
+require 'amf/pure/serializer_helper'
 
 module AMF
   # This module holds all the modules/classes that implement AMF's

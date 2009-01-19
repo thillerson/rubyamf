@@ -1,4 +1,3 @@
-require 'pure/serializer_helper'
 require 'date'
 require 'bigdecimal'
 require 'rexml/document'
