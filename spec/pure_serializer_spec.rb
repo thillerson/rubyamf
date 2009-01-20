@@ -249,22 +249,24 @@ describe AMF do
         sc = StringCarrier.new
         sc.str = foo
         
-        output = foo.to_amf
+        state = AMF::Pure::Serializer::State.new
+        
+        output = foo.to_amf(state)
         expected_message = expected_encoded_string_for( foo )
 
-        output << bar.to_amf
+        output << bar.to_amf(state)
         expected_message << expected_encoded_string_for( bar )
         
-        output << foo.to_amf
+        output << foo.to_amf(state)
         expected_message << expected_encoded_string_reference( 0 ) # first reference of Foo
         
-        output << bar.to_amf
+        output << bar.to_amf(state)
         expected_message << expected_encoded_string_reference( 1 ) # first reference of Bar
         
-        output << foo.to_amf
+        output << foo.to_amf(state)
         expected_message << expected_encoded_string_reference( 0 ) # second reference of Foo
         
-        output << sc.to_amf
+        output << sc.to_amf(state)
         expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
         expected_message << "#{expected_encoded_string_for('str')}" << expected_encoded_string_reference( 0 ) # third reference of Foo
         expected_message << "#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}"
@@ -276,9 +278,11 @@ describe AMF do
         # AMF Spec 1.3.2: the empty string is never referenced
         empty = ""
         
-        output = empty.to_amf
+        state = AMF::Pure::Serializer::State.new
+        
+        output = empty.to_amf(state)
         expected_message = "#{ENCODED_STRING_MARKER}#{ENCODED_EMPTY_STRING}"
-        output << empty.to_amf
+        output << empty.to_amf(state)
         expected_message << "#{ENCODED_STRING_MARKER}#{ENCODED_EMPTY_STRING}"
 
         output.should == expected_message
@@ -286,17 +290,19 @@ describe AMF do
       
       it "should keep references of duplicate dates" do
         d = Date.today
-        output = d.to_amf
+        state = AMF::Pure::Serializer::State.new
+        
+        output = d.to_amf(state)
         expected_time_stamp = expected_double_value_for( d.strftime('%s').to_i * 1000 )
         expected_message = "#{ENCODED_DATE_MARKER}#{ENCODED_LOW_BIT_OF_ONE}" << expected_time_stamp
         output.should == expected_message
         
-        output << d.to_amf
+        output << d.to_amf(state)
         expected_message << "#{ENCODED_DATE_MARKER}" << expected_encoded_object_reference( 0 )
         output.should == expected_message
 
         out = Date.parse '12/31/1999'
-        output << d.to_amf
+        output << d.to_amf(state)
         expected_time_stamp = expected_double_value_for( d.strftime('%s').to_i * 1000 )
         expected_message << "#{ENCODED_DATE_MARKER}#{ENCODED_LOW_BIT_OF_ONE}" << expected_time_stamp
         output.should == expected_message
@@ -313,23 +319,25 @@ describe AMF do
         so2 = SimpleReferenceableObj.new
         so2.foo = 'baz'
         
-        output = so1.to_amf
+        state = AMF::Pure::Serializer::State.new
+        
+        output = so1.to_amf(state)
         expected_message = "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
         expected_message << "#{expected_encoded_string_for('foo')}#{expected_encoded_string_for('bar')}"
         expected_message << "#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}"
         
-        output << so1.to_amf
+        output << so1.to_amf(state)
         expected_message << "#{ENCODED_OBJECT_MARKER}" << expected_encoded_object_reference( 0 ) # first reference of so1
         
-        output << so2.to_amf
+        output << so2.to_amf(state)
         expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
         expected_message << "#{expected_encoded_string_reference( 0 )}#{expected_encoded_string_for('baz')}" # foo is now a reference, the first
         expected_message << "#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}"
 
-        output << so1.to_amf
+        output << so1.to_amf(state)
         expected_message << "#{ENCODED_OBJECT_MARKER}" << expected_encoded_object_reference( 0 ) # second reference of so1
 
-        output << so2.to_amf
+        output << so2.to_amf(state)
         expected_message << "#{ENCODED_OBJECT_MARKER}" << expected_encoded_object_reference( 1 ) # first reference of so2
 
         output.should == expected_message
@@ -339,27 +347,29 @@ describe AMF do
         a = [1,2,3]
         b = %w{ a b c }
         
-        output = a.to_amf
+        state = AMF::Pure::Serializer::State.new
+        
+        output = a.to_amf(state)
         expected_message = "#{ENCODED_ARRAY_MARKER}"
         expected_message << expected_encoded_header_for( a ) # U29A-value - a low byte of one and a 3 to denote the length of the array
         expected_message << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
         # the encoded values of the array
         expected_message << "#{ENCODED_INTEGER_MARKER}\001#{ENCODED_INTEGER_MARKER}\002#{ENCODED_INTEGER_MARKER}\003"
 
-        output << b.to_amf
+        output << b.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}"
         expected_message << expected_encoded_header_for( b ) # U29A-value - a low byte of one and a 3 to denote the length of the array
         expected_message << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
         # the encoded values of the array
         expected_message << expected_encoded_string_for('a') << expected_encoded_string_for('b') << expected_encoded_string_for('c')
         
-        output << a.to_amf
+        output << a.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}" << expected_encoded_object_reference( 0 ) # first reference of a
         
-        output << b.to_amf
+        output << b.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}" << expected_encoded_object_reference( 1 ) # first reference of b
         
-        output << a.to_amf
+        output << a.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}" << expected_encoded_object_reference( 0 ) # second reference of a
         
         output.should == expected_message
@@ -371,21 +381,23 @@ describe AMF do
         a.should == b
         a.object_id.should_not == b.object_id
       
-        output = a.to_amf
+        state = AMF::Pure::Serializer::State.new
+      
+        output = a.to_amf(state)
         expected_message = "#{ENCODED_ARRAY_MARKER}"
         expected_message << expected_encoded_header_for( a ) # U29A-value - a low byte of one and a 0 to denote the length of the array
         expected_message << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
 
-        output << a.to_amf
+        output << a.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}"
         expected_message << expected_encoded_header_for( b ) # U29A-value - a low byte of one and a 0 to denote the length of the array
         expected_message << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
 
-        output << a.to_amf
+        output << a.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}"
         expected_message << expected_encoded_object_reference( 0 ) # a reference to array a
 
-        output << b.to_amf
+        output << b.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}"
         expected_message << expected_encoded_object_reference( 1 ) # a reference to array b
 
@@ -413,12 +425,14 @@ describe AMF do
           
         end
         
+        state = AMF::Pure::Serializer::State.new
+        
         parent = GraphMember.new
         level_1_child_1 = parent.add_child GraphMember.new
         level_1_child_2 = parent.add_child GraphMember.new
         # level_2_child_1 = level_1_child_1.add_child GraphMember.new
         
-        output = parent.to_amf
+        output = parent.to_amf(state)
         expected_message = "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}" # parent, obj ref 0
         expected_message << expected_encoded_string_for('children') << ENCODED_ARRAY_MARKER # obj ref 1
         expected_message << expected_encoded_header_for( parent.children ) << ENCODED_NULL_MARKER # header and empty dynamic portion
