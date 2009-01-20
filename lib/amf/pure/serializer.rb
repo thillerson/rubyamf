@@ -5,6 +5,22 @@ module AMF
   module Pure
     module Serializer
       class State
+        
+        # Creates a State object from _opts_, which ought to be Hash to create
+        # a new State instance configured by _opts_, something else to create
+        # an unconfigured instance. If _opts_ is a State object, it is just
+        # returned.
+        def self.from_state(opts)
+          case opts
+          when self
+            opts
+          when Hash
+            new(opts)
+          else
+            new
+          end
+        end
+        
         def initialize(opts = {})
           @integer_cache  ||= {}
           @float_cache    ||= {}
@@ -14,6 +30,7 @@ module AMF
           @object_cache   ||= {}
           
           @object_method_cache ||= {}
+          configure opts
         end
         attr_accessor :integer_cache, 
                       :float_cache,
@@ -22,26 +39,16 @@ module AMF
                       :object_counter,
                       :object_cache,
                       :empty_array_cache
-         
-        def cache_string(string)
-          @string_cache[string.amf_id] = @string_counter
-          @string_counter += 1
-        end
-        
-        def cache_object(object)
-          @object_cache[object.amf_id] = @object_counter
-          @object_counter += 1
-        end
         
         # if string has been referenced, returns the index of the reference
         # in the implicit string reference tabel. If no reference is found
         # sets the reference to the next index in the implicit strings table
         # and returns nil
         def string_cache(str)
-          @string_cache.fetch(str) do |missed_fetch|
-            @string_cache[missed_fetch] = @string_counter += 1
+          @string_cache.fetch(str.amf_id) { |amf_id|
+            @string_cache[amf_id] = @string_counter += 1
             nil
-          end
+          }
         end
         
         # if object has been referenced, returns the index of the reference
@@ -54,10 +61,28 @@ module AMF
         # and hash uses eql? to compare keys, which would give false positives
         # in all cases.
         def object_cache(obj)
-          @object_cache.fetch(obj.amf_id) do |missed_fetch|
-            @object_cache[missed_fetch] = @object_counter += 1
+          @object_cache.fetch(obj.amf_id) { |amf_id|
+            @object_cache[amf_id] = @object_counter += 1
             nil
+          }
+        end
+        
+        # Configure this State instance with the Hash _opts_, and return
+        # itself.
+        def configure(opts)
+          #@check_circular = !!opts[:check_circular] if opts.key?(:check_circular)
+          self
+        end
+        
+        # Returns the configuration instance variables as a hash, that can be
+        # passed to the configure method.
+        def to_h
+          result = {}
+          #for iv in %w[check_circular]
+          for iv in %w[]
+            result[iv.intern] = instance_variable_get("@#{iv}")
           end
+          result
         end
       end
                   
@@ -210,7 +235,6 @@ module AMF
     elsif state && (index = state.string_cache(string))
       output << header_for_cache(index, state)
     else
-      state.cache_string(string) if state
       output << header_for_string(string, state) 
       output << string
     end
@@ -230,7 +254,6 @@ module AMF
     if state && (index = state.object_cache(datetime))
       output << header_for_cache(index, state)
     else
-      state.cache_object(datetime) if state
       output << ONE
       output << write_double(seconds, state, false)
     end
@@ -243,11 +266,10 @@ module AMF
     if state && (index = state.object_cache(obj))
       output << header_for_cache(index, state)
     else
-      state ||= AMF::Pure::Serializer::State.new  
+      state = AMF.state.from_state(state) 
       # Dynamic, Anonymous Object - very simple heuristics
       if obj.is_a? Hash
         output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
-        state.cache_object(obj) if state
         obj.each do |key, value|
           output << key.to_amf(state) # easy for both string and symbol keys
           output << value.to_amf(state)
@@ -280,7 +302,7 @@ module AMF
     if state && (index = state.object_cache(array))
       output << header_for_cache(index, state)
     else
-      state ||= AMF::Pure::Serializer::State.new
+      state = AMF.state.from_state(state) 
       output << header_for_array(array, state)
       # AMF only encodes strict, dense arrays by the AMF spec
       # so the dynamic portion is empty

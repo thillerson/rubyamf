@@ -301,7 +301,7 @@ describe AMF do
         expected_message << "#{ENCODED_DATE_MARKER}" << expected_encoded_object_reference( 0 )
         output.should == expected_message
 
-        out = Date.parse '12/31/1999'
+        d = Date.parse '12/31/1999'
         output << d.to_amf(state)
         expected_time_stamp = expected_double_value_for( d.strftime('%s').to_i * 1000 )
         expected_message << "#{ENCODED_DATE_MARKER}#{ENCODED_LOW_BIT_OF_ONE}" << expected_time_stamp
@@ -331,7 +331,7 @@ describe AMF do
         
         output << so2.to_amf(state)
         expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
-        expected_message << "#{expected_encoded_string_reference( 0 )}#{expected_encoded_string_for('baz')}" # foo is now a reference, the first
+        expected_message << "#{expected_encoded_string_for('foo')}#{expected_encoded_string_for('baz')}" # foo is now a reference, the first
         expected_message << "#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}"
 
         output << so1.to_amf(state)
@@ -388,7 +388,7 @@ describe AMF do
         expected_message << expected_encoded_header_for( a ) # U29A-value - a low byte of one and a 0 to denote the length of the array
         expected_message << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
 
-        output << a.to_amf(state)
+        output << b.to_amf(state)
         expected_message << "#{ENCODED_ARRAY_MARKER}"
         expected_message << expected_encoded_header_for( b ) # U29A-value - a low byte of one and a 0 to denote the length of the array
         expected_message << "#{ENCODED_NULL_MARKER}" #empty string ending dynamic portion (which is empty)
