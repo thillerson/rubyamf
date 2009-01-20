@@ -8,19 +8,57 @@ module AMF
         def initialize(opts = {})
           @integer_cache  ||= {}
           @float_cache    ||= {}
-          @string_counter ||= 0
+          @string_counter ||= -1
           @string_cache   ||= {}
-          @object_counter ||= 0
+          @object_counter ||= -1
           @object_cache   ||= {}
-          @empty_array_cache   ||= {}
+          
+          @object_method_cache ||= {}
         end
         attr_accessor :integer_cache, 
-                      :floats_cache,
+                      :float_cache,
                       :string_counter,
                       :string_cache,
                       :object_counter,
                       :object_cache,
                       :empty_array_cache
+         
+        def cache_string(string)
+          @string_cache[string.amf_id] = @string_counter
+          @string_counter += 1
+        end
+        
+        def cache_object(object)
+          @object_cache[object.amf_id] = @object_counter
+          @object_counter += 1
+        end
+        
+        # if string has been referenced, returns the index of the reference
+        # in the implicit string reference tabel. If no reference is found
+        # sets the reference to the next index in the implicit strings table
+        # and returns nil
+        def string_cache(str)
+          @string_cache.fetch(str) do |missed_fetch|
+            @string_cache[missed_fetch] = @string_counter += 1
+            nil
+          end
+        end
+        
+        # if object has been referenced, returns the index of the reference
+        # in the implicit object reference table. If no reference is found
+        # sets the reference to the next index in the implicit objects table
+        # and returns nil.
+        # if the object is an empty array, we need to make sure that we
+        # don't return a reference unless the object ids are the same,
+        # since eql? returns true if the contents of the array are the same
+        # and hash uses eql? to compare keys, which would give false positives
+        # in all cases.
+        def object_cache(obj)
+          @object_cache.fetch(obj.amf_id) do |missed_fetch|
+            @object_cache[missed_fetch] = @object_counter += 1
+            nil
+          end
+        end
       end
                   
       module SerializerMethods 
@@ -108,6 +146,10 @@ module AMF
           def to_amf(state = nil, *)
             AMF.write_object(self, state)
           end
+          
+          def amf_id
+            object_id
+          end
         end
         
         module REXML
@@ -165,10 +207,10 @@ module AMF
     output << STRING_MARKER
     if string == ''
       output << EMPTY_STRING
-    elsif index = string_cache(string, state)
+    elsif state && (index = state.string_cache(string))
       output << header_for_cache(index, state)
     else
-      cache_string(string, state)
+      state.cache_string(string) if state
       output << header_for_string(string, state) 
       output << string
     end
@@ -185,10 +227,10 @@ module AMF
       ((datetime.strftime("%s").to_i) * 1000).to_i
     end
     
-    if index = object_cache(seconds, state)
+    if state && (index = state.object_cache(datetime))
       output << header_for_cache(index, state)
     else
-      cache_object(seconds, state)
+      state.cache_object(datetime) if state
       output << ONE
       output << write_double(seconds, state, false)
     end
@@ -198,21 +240,24 @@ module AMF
     output = ''
     output << OBJECT_MARKER
     
-    if index = object_cache( obj, state )
+    if state && (index = state.object_cache(obj))
       output << header_for_cache(index, state)
     else
       state ||= AMF::Pure::Serializer::State.new  
       # Dynamic, Anonymous Object - very simple heuristics
-      output << DYNAMIC_OBJECT
       if obj.is_a? Hash
-        output << ANONYMOUS_OBJECT
-        cache_object(obj, state)
+        output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
+        state.cache_object(obj) if state
         obj.each do |key, value|
           output << key.to_amf(state) # easy for both string and symbol keys
           output << value.to_amf(state)
         end
-      else # unmapped object
-        output << ANONYMOUS_OBJECT
+      else# unmapped object
+        #OPTIMIZE: keep a hash of classes that come through here
+        # and store in a hash keyed by obj.class
+        # if the obj.class is in the hash, loop over the hash of
+        # public methods
+        output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
         # find all public methods belonging to this object alone
         obj.public_methods(false).each do |method_name|
           # and write them to the stream if they take no arguments
@@ -232,7 +277,7 @@ module AMF
     output = ''
     output << ARRAY_MARKER
   
-    if index = object_cache( array, state )
+    if state && (index = state.object_cache(array))
       output << header_for_cache(index, state)
     else
       state ||= AMF::Pure::Serializer::State.new
@@ -308,63 +353,5 @@ module AMF
       [double].pack('G')
     end
   end
-   
-  # if string has been referenced, returns the index of the reference
-  # in the implicit string reference tabel. If no reference is found
-  # sets the reference to the next index in the implicit strings table
-  # and returns nil
-  def string_cache(str, state = nil)
-    #TODO: shorten if statement
-    if state
-      state.string_cache.fetch(str) do |missed_fetch|
-        state.string_cache[missed_fetch] = state.string_counter += 1
-        nil
-      end
-    else
-      nil
-    end
-  end
-  
-  def cache_string(string, state = nil)
-    if state
-      state.string_cache[string] = state.string_counter
-      state.string_counter += 1
-    end
-  end
-  
-  # if object has been referenced, returns the index of the reference
-  # in the implicit object reference table. If no reference is found
-  # sets the reference to the next index in the implicit objects table
-  # and returns nil.
-  # if the object is an empty array, we need to make sure that we
-  # don't return a reference unless the object ids are the same,
-  # since eql? returns true if the contents of the array are the same
-  # and hash uses eql? to compare keys, which would give false positives
-  # in all cases.
-  def object_cache(obj, state = nil)
-    #TODO: shorten if statement
-    if state
-      if obj == []
-        state.empty_array_cache.fetch(obj.object_id) do |missed_fetch|
-          state.empty_array_cache[missed_fetch] = state.object_counter += 1
-          nil
-        end
-      else
-        state.object_cache.fetch(obj) do |missed_fetch|
-          state.object_cache[missed_fetch] = state.object_counter += 1
-          nil
-        end
-      end
-    else
-      nil
-    end
-  end
-  
-  def cache_object(object, state = nil)
-    if state
-      state.object_cache[object] = state.object_counter
-      state.object_counter += 1
-    end
-  end
-  
+
 end
