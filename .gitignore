@@ -1,1 +1,5 @@
 pkg/*
+.DS_Store
+.loadpath
+.project
+
