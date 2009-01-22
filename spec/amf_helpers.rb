@@ -41,4 +41,3 @@ end
 def expected_encoded_object_reference reference
   "" << ( reference << 1 )
 end
-

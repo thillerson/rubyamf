@@ -249,7 +249,7 @@ describe AMF do
         sc = StringCarrier.new
         sc.str = foo
         
-        state = AMF::Pure::Serializer::State.new
+        state = AMF.state.new
         
         output = foo.to_amf(state)
         expected_message = expected_encoded_string_for( foo )
@@ -278,7 +278,7 @@ describe AMF do
         # AMF Spec 1.3.2: the empty string is never referenced
         empty = ""
         
-        state = AMF::Pure::Serializer::State.new
+        state = AMF.state.new
         
         output = empty.to_amf(state)
         expected_message = "#{ENCODED_STRING_MARKER}#{ENCODED_EMPTY_STRING}"
@@ -290,7 +290,7 @@ describe AMF do
       
       it "should keep references of duplicate dates" do
         d = Date.today
-        state = AMF::Pure::Serializer::State.new
+        state = AMF.state.new
         
         output = d.to_amf(state)
         expected_time_stamp = expected_double_value_for( d.strftime('%s').to_i * 1000 )
@@ -319,7 +319,7 @@ describe AMF do
         so2 = SimpleReferenceableObj.new
         so2.foo = 'baz'
         
-        state = AMF::Pure::Serializer::State.new
+        state = AMF.state.new
         
         output = so1.to_amf(state)
         expected_message = "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}"
@@ -347,7 +347,7 @@ describe AMF do
         a = [1,2,3]
         b = %w{ a b c }
         
-        state = AMF::Pure::Serializer::State.new
+        state = AMF.state.new
         
         output = a.to_amf(state)
         expected_message = "#{ENCODED_ARRAY_MARKER}"
@@ -381,7 +381,7 @@ describe AMF do
         a.should == b
         a.object_id.should_not == b.object_id
       
-        state = AMF::Pure::Serializer::State.new
+        state = AMF.state.new
       
         output = a.to_amf(state)
         expected_message = "#{ENCODED_ARRAY_MARKER}"
@@ -425,7 +425,7 @@ describe AMF do
           
         end
         
-        state = AMF::Pure::Serializer::State.new
+        state = AMF.state.new
         
         parent = GraphMember.new
         level_1_child_1 = parent.add_child GraphMember.new

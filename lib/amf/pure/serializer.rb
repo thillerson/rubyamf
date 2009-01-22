@@ -1,15 +1,11 @@
+require 'constants'
 require 'date'
 require 'bigdecimal'
 require 'rexml/document'
 module AMF  
   module Pure
     module Serializer
-      class State
-        
-        # Creates a State object from _opts_, which ought to be Hash to create
-        # a new State instance configured by _opts_, something else to create
-        # an unconfigured instance. If _opts_ is a State object, it is just
-        # returned.
+      class State    
         def self.from_state(opts)
           case opts
           when self
@@ -45,10 +41,11 @@ module AMF
         # sets the reference to the next index in the implicit strings table
         # and returns nil
         def string_cache(str)
-          @string_cache.fetch(str.amf_id) { |amf_id|
+          index = @string_cache.fetch(str.amf_id) { |amf_id|
             @string_cache[amf_id] = @string_counter += 1
             nil
           }
+          header_for_cache(index) if index
         end
         
         # if object has been referenced, returns the index of the reference
@@ -61,10 +58,16 @@ module AMF
         # and hash uses eql? to compare keys, which would give false positives
         # in all cases.
         def object_cache(obj)
-          @object_cache.fetch(obj.amf_id) { |amf_id|
+          index = @object_cache.fetch(obj.amf_id) { |amf_id|
             @object_cache[amf_id] = @object_counter += 1
             nil
           }
+          header_for_cache(index) if index
+        end
+        
+        def header_for_cache(index)
+          header = index << 1 # shift value left to leave a low bit of 0
+          AMF.pack_integer(header, self)
         end
         
         # Configure this State instance with the Hash _opts_, and return
@@ -89,51 +92,84 @@ module AMF
       module SerializerMethods 
         module NilClass
           def to_amf(*)
-            AMF.write_null
+            NULL_MARKER
           end
         end
         
         module FalseClass
           def to_amf(*)
-            AMF.write_false
+            FALSE_MARKER
           end
         end
         
         module TrueClass
           def to_amf(*)
-            AMF.write_true
+            TRUE_MARKER
           end
         end
         
         module Bignum
           def to_amf(state = nil, *)
-            #AMF.write_double self
             self.to_f.to_amf(state)
           end
         end
         
         module Integer
           def to_amf(state = nil, *)
-            AMF.write_number(self, state)
+            if self >= MIN_INTEGER && self <= MAX_INTEGER #check valid range for 29 bits
+              write_integer(self, state)
+            else #overflow to a double
+              self.to_f.to_amf(state)
+            end
+          end
+          
+          private
+          
+          def write_integer(integer, state = nil)
+            output = ''
+            output << INTEGER_MARKER
+            output << AMF.pack_integer(integer)
           end
         end
         
         module Float
           def to_amf(state = nil, *)
-            AMF.write_double(self, state)
+            output = ''
+            output << DOUBLE_MARKER
+            output << AMF.pack_double(self, state)
           end
         end
         
         module BigDecimal
           def to_amf(state = nil, *)
-            #AMF.write_double self
             self.to_f.to_amf(state)
           end
         end
         
         module String
           def to_amf(state = nil, *)
-            AMF.write_string(self, state)
+            output = ''
+            output << STRING_MARKER
+            if self == ''
+              output << EMPTY_STRING
+            elsif state && (cache_header = state.string_cache(self))
+              output << cache_header
+            else
+              output << header_for_string(state) 
+              output << self
+            end
+          end
+          
+          def from_amf()
+            self
+          end
+          
+          private
+          
+          def header_for_string(state = nil)
+            header = self.length << 1 # make room for a low bit of 1
+            header = header | 1 # set the low bit to 1
+            AMF.pack_integer(header, state)
           end
         end
         
@@ -145,35 +181,119 @@ module AMF
         
         module Array
           def to_amf(state = nil, *)
-            AMF.write_array(self, state)
+            output = ''
+            output << ARRAY_MARKER
+          
+            if state && (cache_header =  state.object_cache(self))
+              output << cache_header
+            else
+              state = AMF.state.from_state(state) 
+              output << header_for_array(state)
+              # AMF only encodes strict, dense arrays by the AMF spec
+              # so the dynamic portion is empty
+              output << CLOSE_DYNAMIC_ARRAY
+              self.each do |val|
+                output << val.to_amf(state)
+              end
+            end
+            output
+          end
+          
+          private
+          
+          def header_for_array(state = nil)
+            header = self.length << 1 # make room for a low bit of 1
+            header = header | 1 # set the low bit to 1
+            AMF.pack_integer(header, state)
           end
         end
         
         module Hash
-          def to_amf(state = nil, *)
-            AMF.write_object(self, state)
+          
+          private
+          
+          def serialize_properties(state = nil)
+            output = ''
+            self.each do |key, value|
+              output << key.to_amf(state) # easy for both string and symbol keys
+              output << value.to_amf(state)
+            end
+            output
           end
         end
         
         module Time
           def to_amf(state = nil, *)
-            AMF.write_date(self, state)
+            output = ''
+            output << DATE_MARKER
+            
+            seconds = (self.utc?) ? self.to_f : self.utc
+            
+            if state && (cache_header = state.object_cache(self))
+              output << cache_header
+            else
+              output << ONE
+              output << AMF.pack_double(seconds, state)
+            end
           end
         end
         
         module Date
           def to_amf(state = nil, *)
-            AMF.write_date(self, state)
+            output = ''
+            output << DATE_MARKER
+            
+            seconds = ((self.strftime("%s").to_i) * 1000).to_i
+            
+            if state && (cache_header = state.object_cache(self))
+              output << cache_header
+            else
+              output << ONE
+              output << AMF.pack_double(seconds, state)
+            end
           end
         end
         
         module Object
           def to_amf(state = nil, *)
-            AMF.write_object(self, state)
+            output = ''
+            output << OBJECT_MARKER
+            
+            if state && (cache_header = state.object_cache(self))
+              output << cache_header
+            else
+              state = AMF.state.from_state(state) 
+              output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
+              output << serialize_properties(state)
+              output << CLOSE_DYNAMIC_OBJECT
+            end
           end
+          
+          protected
           
           def amf_id
             object_id
+          end
+          
+          private
+            
+          # unmapped object
+          #OPTIMIZE: keep a hash of classes that come through here
+          # and store in a hash keyed by obj.class
+          # if the obj.class is in the hash, loop over the hash of
+          # public methods
+          # find all public methods belonging to this object alone
+          def serialize_properties(state = nil)
+            output = ''
+            self.public_methods(false).each do |method_name|
+              # and write them to the stream if they take no arguments
+              method_def = self.method(method_name)
+              if method_def.arity == 0
+                output << method_name.to_amf(state)
+                output << self.send(method_name).to_amf(state)
+              end
+            end
+            output
           end
         end
         
@@ -188,157 +308,7 @@ module AMF
     end
   end
   
-  require 'constants'
-  
   module_function
-  
-  def write_null
-    NULL_MARKER
-  end
-  
-  def write_false
-    FALSE_MARKER
-  end
-  
-  def write_true
-    TRUE_MARKER
-  end
-  
-  # integers can be 29 bits wide in the AMF spec
-  def write_number(number, state = nil)
-    if number >= MIN_INTEGER && number <= MAX_INTEGER #check valid range for 29 bits
-      write_integer(number, state)
-    else #overflow to a double
-      number.to_f.to_amf(state)
-    end
-  end
-  
-  def write_integer(integer, state = nil)
-    output = ''
-    output << INTEGER_MARKER
-    output << pack_integer(integer)
-    output
-  end
-    
-  def write_double(double, state = nil, include_marker=true)
-    output = ''
-    output << DOUBLE_MARKER if include_marker
-    output << pack_double(double, state)
-    output
-  end
-  
-  def write_string(string, state = nil)
-    output = ''
-    output << STRING_MARKER
-    if string == ''
-      output << EMPTY_STRING
-    elsif state && (index = state.string_cache(string))
-      output << header_for_cache(index, state)
-    else
-      output << header_for_string(string, state) 
-      output << string
-    end
-  end
-  
-  def write_date(datetime, state = nil)
-    output = ''
-    output << DATE_MARKER
-    
-    seconds = if datetime.is_a?(Time)
-      datetime.utc unless datetime.utc?
-      datetime.to_f
-    elsif datetime.is_a?(Date) # this also handles the case of a DateTime
-      ((datetime.strftime("%s").to_i) * 1000).to_i
-    end
-    
-    if state && (index = state.object_cache(datetime))
-      output << header_for_cache(index, state)
-    else
-      output << ONE
-      output << write_double(seconds, state, false)
-    end
-  end
-  
-  def write_object(obj, state = nil)
-    output = ''
-    output << OBJECT_MARKER
-    
-    if state && (index = state.object_cache(obj))
-      output << header_for_cache(index, state)
-    else
-      state = AMF.state.from_state(state) 
-      # Dynamic, Anonymous Object - very simple heuristics
-      if obj.is_a? Hash
-        output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
-        obj.each do |key, value|
-          output << key.to_amf(state) # easy for both string and symbol keys
-          output << value.to_amf(state)
-        end
-      else# unmapped object
-        #OPTIMIZE: keep a hash of classes that come through here
-        # and store in a hash keyed by obj.class
-        # if the obj.class is in the hash, loop over the hash of
-        # public methods
-        output << DYNAMIC_OBJECT << ANONYMOUS_OBJECT
-        # find all public methods belonging to this object alone
-        obj.public_methods(false).each do |method_name|
-          # and write them to the stream if they take no arguments
-          method_def = obj.method(method_name)
-          if method_def.arity == 0
-            output << method_name.to_amf(state)
-            output << obj.send(method_name).to_amf(state)
-          end
-        end
-      end
-      output << CLOSE_DYNAMIC_OBJECT
-    end
-    output
-  end
-  
-  def write_array(array, state = nil)
-    output = ''
-    output << ARRAY_MARKER
-  
-    if state && (index = state.object_cache(array))
-      output << header_for_cache(index, state)
-    else
-      state = AMF.state.from_state(state) 
-      output << header_for_array(array, state)
-      # AMF only encodes strict, dense arrays by the AMF spec
-      # so the dynamic portion is empty
-      output << CLOSE_DYNAMIC_ARRAY
-      array.each do |val|
-        output << val.to_amf(state)
-      end
-    end
-    output
-  end
-  
-  # expects argument to be a non-empty string for which
-  # there is no reference
-  # see 1.3.2 and 3.8 in the published AMF spec
-  # header is a low bit of 1 with the length occupying
-  # the remaining bits
-  def header_for_string(string, state = nil)
-    header = string.length << 1 # make room for a low bit of 1
-    header = header | 1 # set the low bit to 1
-    pack_integer(header, state)
-  end
-  
-  # header is a low bit of 1 with the length occupying
-  # the remaining bits
-  def header_for_array(array, state = nil)
-    header = array.length << 1 # make room for a low bit of 1
-    header = header | 1 # set the low bit to 1
-    pack_integer(header, state)
-  end
-  
-  # references have a low bit of 0 with the remaining
-  # bits being the reference
-  def header_for_cache(index, state = nil)
-    header = index << 1 # shift value left to leave a low bit of 0
-    pack_integer(header, state)
-  end
   
   def pack_integer(integer, state = nil)
     if state

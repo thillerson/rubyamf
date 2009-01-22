@@ -42,11 +42,11 @@ module AMF
     
     # Serialize the Ruby data structure _obj_ into a single line AMF
     def serialize(obj, state = nil)
-#      if state
-#        state = State.from_state(state)
-#      else
-#        state = State.new
-#      end
+      if state
+        state = State.from_state(state)
+      else
+        state = State.new
+      end
       obj.to_amf(state)
     end
     
