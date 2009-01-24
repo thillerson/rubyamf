@@ -30,8 +30,8 @@ def expected_encoded_header_for obj_with_length
 end
 
 # expects no references
-def expected_encoded_string_for str
-  "#{ENCODED_STRING_MARKER}" << expected_encoded_header_for( str ) << str
+def expected_encoded_string_for(str, include_marker = true)
+  ((include_marker) ? "#{ENCODED_STRING_MARKER}" : "") << expected_encoded_header_for( str ) << str
 end
 
 def expected_encoded_string_reference reference
