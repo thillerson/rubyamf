@@ -16,7 +16,6 @@ module AMF
   
   # Other Markers, some reused
   EMPTY_STRING          = NULL_MARKER
-  ONE                   = NULL_MARKER
   ANONYMOUS_OBJECT      = NULL_MARKER
   DYNAMIC_OBJECT        = XML_MARKER
   CLOSE_DYNAMIC_OBJECT  = NULL_MARKER

@@ -198,15 +198,15 @@ describe AMF do
       
       it "should serialize an array of mixed objects" do
         h1 = {:foo_one => "bar_one"}
-        h2 = {:foo_two => "bar_two"}
+        h2 = {:foo_two => ""}
         class SimpleObj
           attr_accessor :foo_three
         end
-        so = SimpleObj.new
-        so.foo_three = 42
+        so1 = SimpleObj.new
+        so1.foo_three = 42
         
         expected = readBinary("mixedArray.bin")
-        input = [h1, h2, so]    
+        input = [h1, h2, so1, SimpleObj.new, {}, [h1, h2, so1], [], 42, "", [], "", {}, "bar_one", so1]    
         output = input.to_amf
         output.should == expected
       end
@@ -221,8 +221,8 @@ describe AMF do
         class StringCarrier
           attr_accessor :str
         end       
-        foo = "Foo"
-        bar = "Bar"
+        foo = "foo"
+        bar = "str"
         sc = StringCarrier.new
         sc.str = foo
         
@@ -242,7 +242,6 @@ describe AMF do
       it "should keep references of duplicate dates" do
         expected = readBinary("datesRef.bin")
         input = Date.parse "1/1/1970"
-        state = AMF.state.new
         output = [input,input].to_amf
         output.should == expected
       end
@@ -252,12 +251,12 @@ describe AMF do
           attr_accessor :foo
         end
         obj1 = SimpleReferenceableObj.new
-        obj1.foo = 'foo'
+        obj1.foo = :foo
         obj2 = SimpleReferenceableObj.new
         obj2.foo = obj1.foo
         
         expected = readBinary("objRef.bin") 
-        input = [obj1, obj2, obj1, obj2]
+        input = [[obj1, obj2], "bar", [obj1, obj2]]
         output = input.to_amf
         output.should == expected
       end

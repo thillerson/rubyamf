@@ -128,7 +128,6 @@ module AMF
           def write_string(state = nil)
             output = ''
             if self == ''
-              state.dynamic = false if (state && state.dynamic)
               output << EMPTY_STRING
             elsif state && (cache_header = state.string_cache(self))
               output << cache_header
@@ -253,7 +252,7 @@ module AMF
             if state && (cache_header = state.object_cache(self))
               output << cache_header
             else
-              output << ONE
+              output << AMF.pack_integer(NULL_MARKER)
               output << AMF.pack_double(seconds, state)
             end
           end
@@ -269,7 +268,7 @@ module AMF
             if state && (cache_header = state.object_cache(self))
               output << cache_header
             else
-              output << ONE
+              output << AMF.pack_integer(NULL_MARKER)
               output << AMF.pack_double(seconds, state)
             end
           end
