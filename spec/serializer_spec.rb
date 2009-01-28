@@ -11,7 +11,7 @@ describe AMF do
   describe "when serializing" do
     
     def readBinary(binary_path)
-      File.open('spec/fixtures/serializer/' + binary_path).read
+      File.open('spec/fixtures/' + binary_path).read
     end
     
     describe "simple messages" do
@@ -144,7 +144,9 @@ describe AMF do
         obj.property_one = 'foo'
         obj.property_two = 1
         obj.nil_property = nil
-      
+        
+        #expected = readBinary("dynObject.bin")
+        
         output = obj.to_amf
         # can't depend on order, so match parts
         # open object
@@ -167,6 +169,8 @@ describe AMF do
         hash = {}
         hash[:foo] = "bar"
         hash[:answer] = 42
+        
+        #expected = readBinary("hash.bin")
         
         output = hash.to_amf
         # can't depend on order
@@ -303,6 +307,8 @@ describe AMF do
           end
           
         end
+        
+        #expected = readBinary("graphMember.bin")
         
         state = AMF.state.new
         

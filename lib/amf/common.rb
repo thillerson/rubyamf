@@ -15,7 +15,7 @@ module AMF
     
     # Deserialize the AMF string _source_ into a Ruby data structure and return it.
     def deserialize(source, opts = {})
-      AMF.deserializer.new(source, opts).deserialize
+      AMF.deserializer.new(source, opts).deserialize(source)
     end
     
     # Returns the AMF serializer modul, that is used by AMF. This might be
