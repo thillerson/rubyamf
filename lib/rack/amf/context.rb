@@ -38,5 +38,38 @@ module Rack::AMF
       end
     end
   end
+public
+    # IO-like object that receives log, warning, and error messages;
+    # defaults to the rack.errors environment variable.
+    def errors
+      @errors || (@env && (@errors = @env['rack.errors'])) || STDERR
+    end
  
+    # Set the output stream for log messages, warnings, and errors.
+    def errors=(ioish)
+      fail "stream must respond to :write" if ! ioish.respond_to?(:write)
+      @errors = ioish
+    end
+ 
+  protected
+    # Write a log message to the errors stream. +level+ is a symbol
+    # such as :error, :warn, :info, or :trace.
+    def log(level, message=nil, *params)
+      errors.write("[amf] #{level}: #{message}\n" % params)
+      errors.flush
+    end
+ 
+    def info(*message, &bk)
+      log :info, *message, &bk
+    end
+ 
+    def warn(*message, &bk)
+      log :warn, *message, &bk
+    end
+ 
+    def trace(*message, &bk)
+      return unless verbose?
+      log :trace, *message, &bk
+  end
+  
 end

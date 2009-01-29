@@ -11,7 +11,7 @@ describe AMF do
   describe "when deserializing" do
     
     def readBinary(binary_path)
-      File.open('spec/fixtures/' + binary_path).read
+      File.open('spec/fixtures/objects/' + binary_path).read
     end
     
     describe "simple messages" do
