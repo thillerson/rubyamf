@@ -1,26 +1,30 @@
-%w[rubygems rake rake/clean fileutils newgem rubigen].each { |f| require f }
-require File.dirname(__FILE__) + '/lib/amf'
+# Look in the tasks/setup.rb file for the various options that can be
+# configured in this Rakefile. The .rake files in the tasks directory
+# are where the options are used.
 
-# Generate all the Rake tasks
-# Run 'rake -T' to see list of generated tasks (from gem root directory)
-$hoe = Hoe.new('amf', AMF::VERSION) do |p|
-  p.developer('thillerson', 'tony.hillerson@effectiveui.com')
-  p.changes              = p.paragraphs_of("History.txt", 0..1).join("\n\n")
-  p.rubyforge_name       = p.name
-  # p.extra_deps         = [
-  #   ['activesupport','>= 2.0.2'],
-  # ]
-  p.extra_dev_deps = [
-    ['newgem', ">= #{::Newgem::VERSION}"]
-  ]
-  
-  p.clean_globs |= %w[**/.DS_Store tmp *.log]
-  path = (p.rubyforge_name == p.name) ? p.rubyforge_name : "\#{p.rubyforge_name}/\#{p.name}"
-  p.remote_rdoc_dir = File.join(path.gsub(/^#{p.rubyforge_name}\/?/,''), 'rdoc')
-  p.rsync_args = '-av --delete --ignore-errors'
+begin
+  require 'bones'
+  Bones.setup
+rescue LoadError
+  begin
+    load 'tasks/setup.rb'
+  rescue LoadError
+    raise RuntimeError, '### please install the "bones" gem ###'
+  end
 end
 
-require 'newgem/tasks' # load /tasks/*.rake
-Dir['tasks/**/*.rake'].each { |t| load t }
+ensure_in_path 'lib'
+require 'amf'
 
-task :default => [:spec, :features]
+task :default => 'spec:run'
+
+PROJ.name = 'amf'
+PROJ.authors = 'Tony Hillerson'
+PROJ.email = 'tony.hillerson@effectiveui.com'
+PROJ.url = 'FIXME (project homepage)'
+PROJ.version = AMF::VERSION
+PROJ.rubyforge.name = 'amf'
+
+PROJ.spec.opts << '--color'
+
+# EOF
