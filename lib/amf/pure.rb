@@ -1,3 +1,4 @@
+require 'amf/constants'
 require 'amf/pure/deserializer'
 require 'amf/pure/serializer'
 

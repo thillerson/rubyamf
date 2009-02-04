@@ -1,11 +1,7 @@
 require File.dirname(__FILE__) + '/spec_helper.rb'
-require File.dirname(__FILE__) + '/expected_values.rb'
-require File.dirname(__FILE__) + '/amf_helpers.rb'
 
 require 'date'
 require 'rexml/document'
-require 'rubygems'
-require 'ruby-debug'
 
 describe AMF do
   describe "when deserializing" do
@@ -16,29 +12,29 @@ describe AMF do
     
     describe "simple messages" do
       
-      it "should AMF.deserialize a null" do  
+      it "should deserialize a null" do  
         expected = nil
         input = readBinary("null.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
-      it "should AMF.deserialize a false" do
+      it "should deserialize a false" do
         expected = false
         input = readBinary("false.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
-      it "should AMF.deserialize a true" do
+      it "should deserialize a true" do
         expected = true
         input = readBinary("true.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
-      it "should AMF.deserialize integers" do
-        expected = MAX_INTEGER
+      it "should deserialize integers" do
+        expected = AMF::MAX_INTEGER
         input = readBinary("max.bin")
         output = AMF.deserialize(input)
         output.should == expected
@@ -48,46 +44,46 @@ describe AMF do
         output = AMF.deserialize(input)
         output.should == expected
         
-        expected = MIN_INTEGER
+        expected = AMF::MIN_INTEGER
         input = readBinary("min.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
-      it "should AMF.deserialize large integers" do
-        expected = MAX_INTEGER + 1
+      it "should deserialize large integers" do
+        expected = AMF::MAX_INTEGER + 1
         input = readBinary("largeMax.bin")
         output = AMF.deserialize(input)
         output.should == expected
         
-        expected = MIN_INTEGER - 1
+        expected = AMF::MIN_INTEGER - 1
         input = readBinary("largeMin.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
-      it "should AMF.deserialize BigNums" do
+      it "should deserialize BigNums" do
         expected = 2**1000
         input = readBinary("bigNum.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
-      it "should AMF.deserialize a simple string" do
+      it "should deserialize a simple string" do
         expected = "String . String"
         input = readBinary("string.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
-      it "should AMF.deserialize a symbol as a string" do
+      it "should deserialize a symbol as a string" do
         expected = "foo"
         input = readBinary("symbol.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
-      it "should AMF.deserialize DateTimes" do
+      it "should deserialize DateTimes" do
         expected = DateTime.parse "1/1/1970"
         input = readBinary("date.bin")
         output = AMF.deserialize(input)
@@ -98,7 +94,7 @@ describe AMF do
         #output.should == expected
       end
       
-      it "should AMF.deserialize Dates" do
+      it "should deserialize Dates" do
         expected = Date.parse "1/1/1970"
         input = readBinary("date.bin")
         output = AMF.deserialize(input)
@@ -109,7 +105,7 @@ describe AMF do
         #output.should == expected
       end
 
-      it "should AMF.deserialize Times" do
+      it "should deserialize Times" do
         expected = Time.utc 1970, 1, 1, 0
         input = readBinary("date.bin")
         output = AMF.deserialize(input)
@@ -121,12 +117,12 @@ describe AMF do
       end
 
       #BAH! Who sends XML over AMF?
-      it "should AMF.deserialize a REXML document"
+      it "should deserialize a REXML document"
     end
 
     describe "objects" do
 
-      it "should AMF.deserialize an unmapped object as a dynamic anonymous object" do
+      it "should deserialize an unmapped object as a dynamic anonymous object" do
         # A non-mapped object is any object not explicitly mapped with a AMF
         # mapping. It should be encoded as a dynamic anonymous object with 
         # dynamic properties for all "messages" (public methods)
@@ -156,34 +152,35 @@ describe AMF do
         output.should == expected
       end
       
-      it "should AMF.deserialize a hash as a dynamic anonymous object" do
+      it "should deserialize a hash as a dynamic anonymous object" do
         hash = {}
         hash[:foo] = "bar"
         hash[:answer] = 42
         
+        #need to account for order
         expected = hash
         input = readBinary("hash.bin")
         output = AMF.deserialize(input)
-        output.should == expected      
+        output.should == expected     
       end
       
-      it "should AMF.deserialize an open struct as a dynamic anonymous object"
+      it "should deserialize an open struct as a dynamic anonymous object"
       
-      it "should AMF.deserialize an empty array" do
+      it "should deserialize an empty array" do
         expected = []
         input = readBinary("emptyArray.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
-      it "should AMF.deserialize an array of primatives" do
+      it "should deserialize an array of primatives" do
         expected = [1, 2, 3, 4, 5]
         input = readBinary("primArray.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
-      it "should AMF.deserialize an array of mixed objects" do
+      it "should deserialize an array of mixed objects" do
         h1 = {:foo_one => "bar_one"}
         h2 = {:foo_two => ""}
         class SimpleObj
@@ -198,7 +195,7 @@ describe AMF do
         output.should == expected
       end
 
-      it "should AMF.deserialize a byte array"
+      it "should deserialize a byte array"
 
     end
 
@@ -243,8 +240,8 @@ describe AMF do
 #        obj2 = SimpleReferenceableObj.new
 #        obj2.foo = obj1.foo
 
-        obj1 = {:foo => :foo}
-        obj2 = {:foo => obj1.foo}
+        obj1 = {:foo => :bar}
+        obj2 = {:foo => obj1[:foo]}
         
         expected = [[obj1, obj2], "bar", [obj1, obj2]]
         input = readBinary("objRef.bin") 
@@ -277,27 +274,16 @@ describe AMF do
       it "should keep references of duplicate XML and XMLDocuments"
       it "should keep references of duplicate byte arrays"
       
-      it "should AMF.deserialize a deep object graph with circular references" do
-        
-        #we will need to tweak this to look more like a dynamic object instead of a class
-        class GraphMember
-          attr_accessor :parent
-          attr_accessor :children
-          
-          def initialize
-            self.children = []
-          end
-          
-          def add_child child
-            children << child
-            child.parent = self
-            child
-          end
-        end
-        
-        parent = GraphMember.new
-        level_1_child_1 = parent.add_child GraphMember.new
-        level_1_child_2 = parent.add_child GraphMember.new
+      it "should deserialize a deep object graph with circular references" do
+        parent = Hash.new
+        child1 = Hash.new
+        child1[:parent] = parent
+        child1[:children] = []
+        child2 = Hash.new
+        child2[:parent] = parent
+        child2[:children] = []
+        parent[:parent] = nil
+        parent[:children] = [child1, child2]
         
         expected = parent
         input = readBinary("graphMember.bin")

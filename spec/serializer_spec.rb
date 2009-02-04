@@ -1,11 +1,7 @@
 require File.dirname(__FILE__) + '/spec_helper.rb'
-require File.dirname(__FILE__) + '/expected_values.rb'
-require File.dirname(__FILE__) + '/amf_helpers.rb'
 
 require 'date'
 require 'rexml/document'
-require 'rubygems'
-require 'ruby-debug'
 
 describe AMF do
   describe "when serializing" do
@@ -36,7 +32,7 @@ describe AMF do
 
       it "should serialize integers" do
         expected = readBinary("max.bin")
-        input = MAX_INTEGER
+        input = AMF::MAX_INTEGER
         output = input.to_amf
         output.should == expected
         
@@ -45,19 +41,19 @@ describe AMF do
         output.should == expected
         
         expected = readBinary("min.bin")
-        input = MIN_INTEGER
+        input = AMF::MIN_INTEGER
         output = input.to_amf
         output.should == expected
       end
       
       it "should serialize large integers" do
         expected = readBinary("largeMax.bin")
-        input = MAX_INTEGER + 1
+        input = AMF::MAX_INTEGER + 1
         output = input.to_amf
         output.should == expected
         
         expected = readBinary("largeMin.bin")
-        input = MIN_INTEGER - 1
+        input = AMF::MIN_INTEGER - 1
         output = input.to_amf
         output.should == expected
       end
@@ -145,24 +141,26 @@ describe AMF do
         obj.property_two = 1
         obj.nil_property = nil
         
-        #expected = readBinary("dynObject.bin")
+        expected = readBinary("dynObject.bin")
+        input = obj
+        output = input.to_amf
+        output.should == expected
         
-        output = obj.to_amf
-        # can't depend on order, so match parts
-        # open object
-        output.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
-        # close object
-        output.should match(/.*#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}$/)
-        
-        # encodable properties
-        output.should match(/#{expected_encoded_string_for('property_one', false)}#{expected_encoded_string_for(obj.property_one)}/)
-        output.should match(/#{expected_encoded_string_for('property_two', false)}#{ENCODED_INTEGER_MARKER}#{ENCODED_ONE}/)
-        output.should match(/#{expected_encoded_string_for('another_public_property', false)}#{expected_encoded_string_for(obj.another_public_property)}/)
-        output.should match(/#{expected_encoded_string_for('nil_property', false)}#{ENCODED_NULL_MARKER}/)
-        
-        # non-encodable properties
-        output.should_not match(/#{expected_encoded_string_for('method_with_arg')}/)
-        output.should_not match(/#{expected_encoded_string_for('read_only_prop')}/)
+#        # can't depend on order, so match parts
+#        # open object
+#        output.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
+#        # close object
+#        output.should match(/.*#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}$/)
+#        
+#        # encodable properties
+#        output.should match(/#{expected_encoded_string_for('property_one', false)}#{expected_encoded_string_for(obj.property_one)}/)
+#        output.should match(/#{expected_encoded_string_for('property_two', false)}#{ENCODED_INTEGER_MARKER}#{ENCODED_ONE}/)
+#        output.should match(/#{expected_encoded_string_for('another_public_property', false)}#{expected_encoded_string_for(obj.another_public_property)}/)
+#        output.should match(/#{expected_encoded_string_for('nil_property', false)}#{ENCODED_NULL_MARKER}/)
+#        
+#        # non-encodable properties
+#        output.should_not match(/#{expected_encoded_string_for('method_with_arg')}/)
+#        output.should_not match(/#{expected_encoded_string_for('read_only_prop')}/)
       end
       
       it "should serialize a hash as a dynamic anonymous object" do
@@ -170,18 +168,20 @@ describe AMF do
         hash[:foo] = "bar"
         hash[:answer] = 42
         
-        #expected = readBinary("hash.bin")
+        expected = readBinary("hash.bin")
+        input = hash
+        output = input.to_amf
+        output.should == expected
         
-        output = hash.to_amf
         # can't depend on order
         # open object
-        output.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
-        # close object
-        output.should match(/.*#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}$/)
-
-        # encodable properties
-        output.should match(/#{expected_encoded_string_for('foo', false)}#{expected_encoded_string_for(hash[:foo])}/)
-        output.should match(/#{expected_encoded_string_for('answer', false)}#{ENCODED_INTEGER_MARKER}#{ENCODED_42}/)
+#        output.should match(/^#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}.+/)
+#        # close object
+#        output.should match(/.*#{ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER}$/)
+#
+#        # encodable properties
+#        output.should match(/#{expected_encoded_string_for('foo', false)}#{expected_encoded_string_for(hash[:foo])}/)
+#        output.should match(/#{expected_encoded_string_for('answer', false)}#{ENCODED_INTEGER_MARKER}#{ENCODED_42}/)
       end
       
       it "should serialize an open struct as a dynamic anonymous object"
@@ -255,7 +255,7 @@ describe AMF do
           attr_accessor :foo
         end
         obj1 = SimpleReferenceableObj.new
-        obj1.foo = :foo
+        obj1.foo = :bar
         obj2 = SimpleReferenceableObj.new
         obj2.foo = obj1.foo
         
@@ -308,37 +308,37 @@ describe AMF do
           
         end
         
-        #expected = readBinary("graphMember.bin")
-        
-        state = AMF.state.new
-        
         parent = GraphMember.new
         level_1_child_1 = parent.add_child GraphMember.new
         level_1_child_2 = parent.add_child GraphMember.new
         # level_2_child_1 = level_1_child_1.add_child GraphMember.new
         
-        output = parent.to_amf(state)
-        expected_message = "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}" # parent, obj ref 0
-        expected_message << expected_encoded_string_for('children') << ENCODED_ARRAY_MARKER # obj ref 1
-        expected_message << expected_encoded_header_for( parent.children ) << ENCODED_NULL_MARKER # header and empty dynamic portion
-          # start of level_1_child_1
-          expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}" # obj ref 2
-          expected_message << expected_encoded_string_reference( 0 ) << ENCODED_ARRAY_MARKER # reference to 'children' which is an array, obj ref 3
-          expected_message << expected_encoded_header_for( level_1_child_1.children ) << ENCODED_NULL_MARKER # header and empty dynamic portion
-          expected_message << expected_encoded_string_for( 'parent' )
-          expected_message << ENCODED_OBJECT_MARKER << expected_encoded_object_reference( 0 ) # first reference of parent object
-          expected_message << ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER
-
-          # start of level_1_child_2
-          expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}" # obj ref 4
-          expected_message << expected_encoded_string_reference( 0 ) << ENCODED_ARRAY_MARKER # reference to 'children' which is an array, obj ref 5
-          expected_message << expected_encoded_header_for( level_1_child_2.children ) << ENCODED_NULL_MARKER # header and empty dynamic portion
-          expected_message << expected_encoded_string_reference( 1 ) # reference to 'parent'
-          expected_message << ENCODED_OBJECT_MARKER << expected_encoded_object_reference( 0 ) # reference to parent object
-          expected_message << ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER
-          
-        expected_message << expected_encoded_string_reference( 1 ) << ENCODED_NULL_MARKER # reference to 'parent', which is null
-        expected_message << ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER # end of parent object
+        expected = readBinary("graphMember.bin")
+        input = parent
+        output = input.to_amf()
+        output.should == expected
+        
+#        expected_message = "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}" # parent, obj ref 0
+#        expected_message << expected_encoded_string_for('children') << ENCODED_ARRAY_MARKER # obj ref 1
+#        expected_message << expected_encoded_header_for( parent.children ) << ENCODED_NULL_MARKER # header and empty dynamic portion
+#          # start of level_1_child_1
+#          expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}" # obj ref 2
+#          expected_message << expected_encoded_string_reference( 0 ) << ENCODED_ARRAY_MARKER # reference to 'children' which is an array, obj ref 3
+#          expected_message << expected_encoded_header_for( level_1_child_1.children ) << ENCODED_NULL_MARKER # header and empty dynamic portion
+#          expected_message << expected_encoded_string_for( 'parent' )
+#          expected_message << ENCODED_OBJECT_MARKER << expected_encoded_object_reference( 0 ) # first reference of parent object
+#          expected_message << ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER
+#
+#          # start of level_1_child_2
+#          expected_message << "#{ENCODED_OBJECT_MARKER}#{ENCODED_DYNAMIC_OBJECT_MARKER}#{ENCODED_ANONYMOUS_OBJECT_MARKER}" # obj ref 4
+#          expected_message << expected_encoded_string_reference( 0 ) << ENCODED_ARRAY_MARKER # reference to 'children' which is an array, obj ref 5
+#          expected_message << expected_encoded_header_for( level_1_child_2.children ) << ENCODED_NULL_MARKER # header and empty dynamic portion
+#          expected_message << expected_encoded_string_reference( 1 ) # reference to 'parent'
+#          expected_message << ENCODED_OBJECT_MARKER << expected_encoded_object_reference( 0 ) # reference to parent object
+#          expected_message << ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER
+#          
+#        expected_message << expected_encoded_string_reference( 1 ) << ENCODED_NULL_MARKER # reference to 'parent', which is null
+#        expected_message << ENCODED_CLOSE_DYNAMIC_OBJECT_MARKER # end of parent object
         
         pending do
           violated "need to account for inconsistent ordering of object attributes by ruby in test"

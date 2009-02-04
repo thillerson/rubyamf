@@ -1,7 +1,6 @@
-require 'constants'
 require 'date'
 require 'rexml/document'
-module AMF  
+module AMF 
   module Pure
     module Serializer
       class State    
