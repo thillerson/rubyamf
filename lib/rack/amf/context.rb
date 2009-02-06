@@ -37,8 +37,9 @@ module Rack::AMF
         clone.call! env
       end
     end
-  end
-public
+  
+  public
+  
     # IO-like object that receives log, warning, and error messages;
     # defaults to the rack.errors environment variable.
     def errors
@@ -52,6 +53,7 @@ public
     end
  
   protected
+  
     # Write a log message to the errors stream. +level+ is a symbol
     # such as :error, :warn, :info, or :trace.
     def log(level, message=nil, *params)
@@ -70,6 +72,6 @@ public
     def trace(*message, &bk)
       return unless verbose?
       log :trace, *message, &bk
+    end
   end
-  
 end

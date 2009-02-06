@@ -43,8 +43,10 @@ module Rack::AMF
     # exactly as specified. The +option+ argument may also be a Hash in
     # which case each key/value pair is merged into the environment as if
     # the #set method were called on each.
-    def set(option, value=self)
-      if value == self
+    def set(option, value=self, &block)
+      if block_given?
+        write_option option, block
+      elsif value == self
         self.options = option.to_hash
       else
         write_option option, value

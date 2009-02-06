@@ -4,49 +4,48 @@ require 'rack'
 require 'amf'
 
 module Rack
-end
+  class AMF  
+    require 'rack/amf/request'
+    require 'rack/amf/response'
+    require 'rack/amf/context'
+    
+    def self.new(backend, options={}, &b)
+      Context.new(backend, options, &b)
+    end
+  
+#    ##################################
+#    # CONSTANTS
+#    ##################################
+#    APPLICATION_AMF = 'application/x-amf'.freeze 
+#      
+#    def initialize app
+#      @app = app
+#    end
+#   
+#    def call env
+#      ##################################
+#      # REQUEST
+#      ##################################
+#      @original_request = Request.new(env.dup.freeze)
+#      @request = Request.new(env)
 
-module Rack::AMF
-  require 'rack/amf/request'
-  require 'rack/amf/response'
-  require 'rack/amf/context'
-  
-#  ##################################
-#  # CONSTANTS
-#  ##################################
-#  APPLICATION_AMF = 'application/x-amf'.freeze 
-#
-#  POST_BODY = 'rack.input'.freeze
-#  FORM_INPUT = 'rack.request.form_input'.freeze
-#  FORM_HASH = 'rack.request.form_hash'.freeze
-#    
-#  def initialize app
-#    @app = app
-#  end
-# 
-#  def call env
-#    ##################################
-#    # REQUEST
-#    ##################################
-#    case env['CONTENT_TYPE']
-#    when APPLICATION_AMF
-#      env.update(FORM_HASH => ::AMF.deserialize(env[POST_BODY].read), FORM_INPUT => env[POST_BODY])
+#      case @request.content_type
+#      when APPLICATION_AMF
+#        @request.body = ::AMF.deserialize @request.body
+#      end
+#      
+#      status, headers, body = @app.call(request.env)
+#      
+#      response = Response.new(status, headers, body)
+#      @response = response.dup
+#      @original_response = response.freeze
+#      
+#      case @response.content_type
+#      when APPLICATION_AMF
+#        @response.body = ::AMF.serialize @response.body
+#      end
+#      
+#      @response.to_a
 #    end
-#    
-#    @status, @headers, @body = @app.call(env)				
-#    
-#    ##################################
-#    # RESPONSE
-#    ##################################
-#    case @headers['Content-Type']
-#    when APPLICATION_AMF
-#      @body = ::AMF.serialize @body
-#    end
-#    
-#    [@status, @headers, @body]
-#  end
-  
-  def self.new(backend, options={}, &b)
-    Context.new(backend, options, &b)
   end
 end

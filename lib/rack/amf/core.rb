@@ -34,12 +34,12 @@ module Rack::AMF
   private
     # Transitioning statements
  
-    def receive! ; throw(:transition, [:receive]) ; end
-    def serialize! ; throw(:transition, [:serialize]) ; end
-    def pass! ; throw(:transition, [:pass]) ; end
-    def respond! ; throw(:transition, [:respond]) ; end
-    def deserialize! ; throw(:transition, [:deserialize]) ; end
-    def deliver! ; throw(:transition, [:deliver]) ; end
+    def receive!      ; throw(:transition, [:receive]) ; end
+    def serialize!    ; throw(:transition, [:serialize]) ; end
+    def pass!         ; throw(:transition, [:pass]) ; end
+    def respond!      ; throw(:transition, [:respond]) ; end
+    def deserialize!  ; throw(:transition, [:deserialize]) ; end
+    def deliver!      ; throw(:transition, [:deliver]) ; end
       
     def error!(code=500, headers={}, body=nil)
       throw(:transition, [:error, code, headers, body])
@@ -71,7 +71,9 @@ module Rack::AMF
       @response = response.dup
       @original_response = response.freeze
     end
+    
   private
+    
     def perform_receive
       @original_request = Request.new(@env.dup.freeze)
       @request = Request.new(@env)
@@ -79,7 +81,8 @@ module Rack::AMF
     end
     
     def perform_deserialize
-      #deserialize
+      # AMF.deserialize(source)
+      # deserialize request body into hash
       transition(from=:deserialize, to=[:pass, :error])
     end
     
@@ -93,12 +96,12 @@ module Rack::AMF
     end
     
     def perform_serialize
-      #serialize
+      #AMF.serialize(source)
+      #serialize response 
       transition(from=:serialize, to=[:deliver, :error])
     end
     
     def perform_deliver
-      response.headers.delete 'X-Status'
       response.to_a
     end
     

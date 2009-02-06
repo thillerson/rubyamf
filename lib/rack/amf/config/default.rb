@@ -40,7 +40,7 @@ end
 # * error! - return the error code specified, abandoning the request.
 #
 on :respond do
-  serialize! if response.amf_content?
+  serialize! if request.amf_content?
   deliver!
 end
 
@@ -66,6 +66,6 @@ end
 # * error! - return the error code specified, abandoning the request.
 #
 on :error do
-  serialize! if request.amf_content || response.amf_content?
+  serialize! if request.amf_content? 
   deliver!
 end
