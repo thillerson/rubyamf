@@ -5,12 +5,7 @@ module AMF
     module Serializer
       class State    
         def self.from_state(opts)
-          case opts
-          when self
-            opts
-          else
-            new
-          end
+          opts ||= new
         end
         
         def initialize(opts = {})
@@ -156,7 +151,7 @@ module AMF
             output = ''
             output << ARRAY_MARKER
           
-            state = AMF.state.from_state(state)
+            state = SerializerState.from_state(state)
             if cache_header =  state.object_cache(self)
               output << cache_header
             else
@@ -185,7 +180,7 @@ module AMF
             output = ''
             output << OBJECT_MARKER
             
-            state = AMF.state.from_state(state) 
+            state = SerializerState.from_state(state) 
             if cache_header = state.object_cache(self)
               output << cache_header
             else
