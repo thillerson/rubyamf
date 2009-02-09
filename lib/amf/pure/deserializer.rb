@@ -14,26 +14,23 @@ module AMF
       def initialize()
           @dynamic = false
           
-          @string_counter ||= 0
-          @string_cache   ||= {}
-          @object_counter ||= 0
-          @object_cache   ||= {}
-          @trait_counter ||= 0
-          @trait_cache   ||= {}
+          @string_cache = {}
+          @object_cache = {}
+          @trait_cache  = {}
       end  
       
       def cache_string str
-        @string_cache[@string_counter] = str
-        @string_counter += 1
+        @string_cache[@string_cache.length] = str
       end
       
       def cache_object obj
-        
+        @object_cache[@object_cache.length] = obj       
       end
       
       def cache_trait tra
-        
+        @trait_cache[@trait_cache.length] = tra
       end
+      
       def deserialize_request()
           #request = Request.new()
           #request.read(source)
@@ -56,10 +53,8 @@ module AMF
       end
 
       def deserialize(source, type=nil)
-        if(type == nil)
-          source = BinData::IO.new(source)
-          type = read_int8 source
-        end
+        source = BinData::IO.new(source) unless source.instance_of?(BinData::IO)
+        type = read_int8 source unless type
         
         case type
           when UNDEFINED_MARKER
@@ -77,13 +72,13 @@ module AMF
           when STRING_MARKER 
             read_string source
           when XML_DOC_MARKER
-            #read_amf3_xml_string
+            #read_xml_string
           when DATE_MARKER
             #read_amf3_date
           when ARRAY_MARKER
-            #read_amf3_array
+            read_array source
           when OBJECT_MARKER
-            #read_amf3_object
+            read_object source
           when XML_MARKER
             #read_amf3_xml
           when BYTE_ARRAY_MARKER
@@ -96,7 +91,6 @@ module AMF
       end
       
       #INTEGER_MARKER
-           
       def read_integer source
         n = 0
         b = read_word8(source) || 0
@@ -130,7 +124,6 @@ module AMF
       end
       
       #DOUBLE_MARKER
-      
       def read_number source
         res = read_double source
         res.is_a?(Float)&&res.nan? ? nil : res # check for NaN and convert them to nil
@@ -140,6 +133,120 @@ module AMF
         source.readbytes(8).unpack('G').first
       end
       
+      #STRING_MARKER
+      def read_string source
+        type = read_integer source
+        isReference = type & 0x01 == 0
+        
+        if isReference
+          reference = type >> 1
+          return @string_cache[reference]
+        else
+          length = type >> 1
+          if length > 0
+            str = readn(source, length)
+            cache_string(str)
+          end
+          return str
+        end
+      end
+      
+      def readn(source, length)
+        str = source.readbytes(length)
+      end
+      
+      #XML_DOC_MARKER
+      
+      #ARRAY_MARKER
+      def read_array source
+        type = read_integer source
+        isReference = (type & 0x01) == 0
+        
+        if isReference
+          reference = type >> 1
+          return @object_cache[reference]
+        else
+          length = type >> 1
+          propertyName = read_string source
+          if propertyName != nil
+            array = {}
+            cache_object(array)
+            begin
+              while(propertyName.length)
+                value = deserialize(source)
+                array[propertyName] = value
+                propertyName = read_string source
+              end
+            rescue Exception => e #end of object exception, because propertyName.length will be non existent
+            end
+            0.upto(length - 1) do |i|
+              array["" + i.to_s] = deserialize(source)
+            end
+          else
+            array = []
+            cache_object(array)
+            0.upto(length - 1) do
+              array << deserialize(source)
+            end
+          end
+          array
+        end
+      end
+      
+      #OBJECT_MARKER
+     def read_object source
+        type = read_integer source
+        isReference = (type & 0x01) == 0
+        
+        if isReference
+          reference = type >> 1
+          return @object_cache[reference]
+        else
+          
+          class_type = type >> 1
+          class_is_reference = (class_type & 0x01) == 0
+          
+          if class_is_reference
+            class_reference = class_type >> 1
+            return @trait_cache[reference]
+          else
+            actionscript_class_name = read_string source
+            externalizable = (class_type & 0x02) != 0
+            dynamic = (class_type & 0x04) != 0
+            attribute_count = class_type >> 3
+            
+            class_attributes = []
+            attribute_count.times{class_attributes << read_string(source)} # Read class members
+            
+            class_definition = {"as_class_name" => actionscript_class_name, "members" => class_attributes, "externalizable" => externalizable, "dynamic" => dynamic}
+            cache_trait(class_definition)
+          end
+          action_class_name = class_definition['as_class_name'] #get the className according to type
+
+          obj = Hash.new()
+            
+          cache_object(obj)
+          
+          if class_definition['externalizable']
+            if ['flex.messaging.io.ObjectProxy','flex.messaging.io.ArrayCollection'].include?(action_class_name)
+              obj = deserialize(source)
+            end         
+          else            
+            class_definition['members'].each do |key|
+              value = deserialize(source)
+              obj[key] = value
+            end
+            
+            if class_definition['dynamic']
+              while (key = read_string source) && key.length != 0  do # read next key
+                value = deserialize(source)
+                obj[key] = value
+              end
+            end
+          end
+          obj
+        end
+      end
     end
   end
 end

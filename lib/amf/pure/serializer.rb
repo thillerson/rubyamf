@@ -12,21 +12,17 @@ module AMF
           @dynamic = false
           # integer cache and float cache are used to avoid 
           # processing the numbers multiple times
-          @integer_cache  ||= {}
-          @float_cache    ||= {}
+          @integer_cache = {}
+          @float_cache   = {}
           # string and object cache are used as reference
           # tables which are further discussed in the AMF specs
-          @string_counter ||= 0
-          @string_cache   ||= {}
-          @object_counter ||= 0
-          @object_cache   ||= {}
+          @string_cache  = {}
+          @object_cache  = {}
         end
         attr_accessor :dynamic,
                       :integer_cache, 
                       :float_cache,
-                      :string_counter,
                       :string_cache,
-                      :object_counter,
                       :object_cache
                 
         # if string has been referenced, returns the index of the reference
@@ -35,8 +31,7 @@ module AMF
         # and returns nil
         def string_cache(str)
           index = @string_cache.fetch(str) { |str|
-            @string_cache[str] = @string_counter
-            @string_counter += 1
+            @string_cache[str] = @string_cache.length
             nil
           }
           header_for_cache(index) if index
@@ -48,8 +43,7 @@ module AMF
         # and returns nil.
         def object_cache(obj)
           index = @object_cache.fetch(obj.amf_id) { |amf_id|
-            @object_cache[amf_id] = @object_counter
-            @object_counter += 1
+            @object_cache[amf_id] = @object_cache.length
             nil
           }
           header_for_cache(index) if index

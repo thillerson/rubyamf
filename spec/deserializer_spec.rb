@@ -123,28 +123,11 @@ describe AMF do
     describe "objects" do
 
       it "should deserialize an unmapped object as a dynamic anonymous object" do
-        # A non-mapped object is any object not explicitly mapped with a AMF
-        # mapping. It should be encoded as a dynamic anonymous object with 
-        # dynamic properties for all "messages" (public methods)
-        # that have an arity of 0 - meaning that they take no arguments
-        class NonMappedObject
-          attr_accessor :property_one
-          attr_accessor :property_two
-          attr_accessor :nil_property
-          attr_writer :read_only_prop
 
-          def another_public_property
-            'a_public_value'
-          end
-
-          def method_with_arg arg='foo'
-            arg
-          end
-        end
-        obj = NonMappedObject.new
-        obj.property_one = 'foo'
-        obj.property_two = 1
-        obj.nil_property = nil
+        obj = {:property_one => 'foo', 
+               :property_two => 1, 
+               :nil_property => nil, 
+               :another_public_property => 'a_public_value'}
       
         expected = obj
         input = readBinary("dynObject.bin")
@@ -183,13 +166,9 @@ describe AMF do
       it "should deserialize an array of mixed objects" do
         h1 = {:foo_one => "bar_one"}
         h2 = {:foo_two => ""}
-        class SimpleObj
-          attr_accessor :foo_three
-        end
-        so1 = SimpleObj.new
-        so1.foo_three = 42
+        so1 = {:foo_three => 42}
                 
-        expected = [h1, h2, so1, SimpleObj.new, {}, [h1, h2, so1], [], 42, "", [], "", {}, "bar_one", so1]    
+        expected = [h1, h2, so1, {:foo_three => nil}, {}, [h1, h2, so1], [], 42, "", [], "", {}, "bar_one", so1]    
         input = readBinary("mixedArray.bin")
         output = AMF.deserialize(input)
         output.should == expected
@@ -208,7 +187,7 @@ describe AMF do
         foo = "foo"
         bar = "str"
         sc = StringCarrier.new
-        sc.str = foo
+        sc = {bar => foo}
         
         expected = [foo, bar, foo, bar, foo, sc]
         input = readBinary("stringRef.bin")
