@@ -74,7 +74,7 @@ module AMF
           when XML_DOC_MARKER
             #read_xml_string
           when DATE_MARKER
-            #read_amf3_date
+            read_date source
           when ARRAY_MARKER
             read_array source
           when OBJECT_MARKER
@@ -85,10 +85,6 @@ module AMF
             #read_amf3_byte_array
         end
       end  
-      
-      def read_int8 source
-        source.readbytes(1).unpack('c').first
-      end
       
       #INTEGER_MARKER
       def read_integer source
@@ -119,40 +115,33 @@ module AMF
         result
       end
       
-      def read_word8 source
-        source.readbytes(1).unpack('C').first
-      end
-      
       #DOUBLE_MARKER
       def read_number source
         res = read_double source
         res.is_a?(Float)&&res.nan? ? nil : res # check for NaN and convert them to nil
       end
       
-      def read_double source
-        source.readbytes(8).unpack('G').first
-      end
-      
       #STRING_MARKER
       def read_string source
         type = read_integer source
-        isReference = type & 0x01 == 0
+        isReference = (type & 0x01) == 0
         
         if isReference
           reference = type >> 1
           return @string_cache[reference]
         else
           length = type >> 1
+          #HACK needed for ['',''] array of empty strings
+          #It may be better to take one more parameter that 
+          #would specify whether or not they expect us to return
+          #a string
+          str = "" #if stringRequest
           if length > 0
             str = readn(source, length)
             cache_string(str)
           end
           return str
         end
-      end
-      
-      def readn(source, length)
-        str = source.readbytes(length)
       end
       
       #XML_DOC_MARKER
@@ -168,7 +157,7 @@ module AMF
         else
           length = type >> 1
           propertyName = read_string source
-          if propertyName != nil
+          if propertyName != ""
             array = {}
             cache_object(array)
             begin
@@ -202,13 +191,12 @@ module AMF
           reference = type >> 1
           return @object_cache[reference]
         else
-          
           class_type = type >> 1
           class_is_reference = (class_type & 0x01) == 0
           
           if class_is_reference
-            class_reference = class_type >> 1
-            return @trait_cache[reference]
+            reference = class_type >> 1
+            class_definition = @trait_cache[reference]
           else
             actionscript_class_name = read_string source
             externalizable = (class_type & 0x02) != 0
@@ -218,7 +206,10 @@ module AMF
             class_attributes = []
             attribute_count.times{class_attributes << read_string(source)} # Read class members
             
-            class_definition = {"as_class_name" => actionscript_class_name, "members" => class_attributes, "externalizable" => externalizable, "dynamic" => dynamic}
+            class_definition = {"as_class_name" => actionscript_class_name, 
+                                "members" => class_attributes, 
+                                "externalizable" => externalizable, 
+                                "dynamic" => dynamic}
             cache_trait(class_definition)
           end
           action_class_name = class_definition['as_class_name'] #get the className according to type
@@ -247,6 +238,45 @@ module AMF
           obj
         end
       end
+      
+      #DATE MARKER
+      def read_date source
+        type = read_integer source
+        isReference = (type & 0x01) == 0
+        if isReference
+          reference = type >> 1
+          return @object_cache[reference]
+        else
+          seconds = read_double(source).to_f/1000
+          time = if (seconds < 0) # we can't use Time if its a negative second value
+            DateTime.strptime(seconds.to_s, "%s")
+          else 
+            #Time.at(seconds)
+            Time.at(seconds).utc
+          end
+          cache_object(time)
+          time
+        end
+      end
+      
+      #IO HELPERS
+      
+      def read_int8 source
+        source.readbytes(1).unpack('c').first
+      end
+      
+      def read_word8 source
+        source.readbytes(1).unpack('C').first
+      end
+      
+      def read_double source
+        source.readbytes(8).unpack('G').first
+      end
+      
+      def readn(source, length)
+        source.readbytes(length)
+      end
+      
     end
   end
 end
