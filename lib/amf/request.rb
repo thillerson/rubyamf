@@ -3,7 +3,7 @@ require 'bindata'
 module AMF
   module Pure    
     class MetaString < BinData::SingleValue
-      uint16be :len, :value => lambda { stream.length }
+      int16be :len, :value => lambda { stream.length }
       string :stream, :read_length => :len
         
       def get
@@ -16,7 +16,7 @@ module AMF
     end
     
     class DataString < BinData::MultiValue
-      uint32be :len, :value => lambda { stream.length }
+      int32be :len, :value => lambda { stream.length }
       int8 :stream_type
       string :stream, :read_length => :len
     end
@@ -38,7 +38,7 @@ module AMF
       int8 :client_version
       uint16be :header_count
       array :headers, :type => :header, :initial_length => :header_count
-      uint16be :body_count
+      int16be :body_count
       array :bodies, :type => :body, :initial_length => :body_count
     end
   end

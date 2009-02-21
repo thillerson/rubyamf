@@ -31,29 +31,58 @@ module AMF
         @trait_cache[@trait_cache.length] = tra
       end
       
-      def deserialize_request()
-          #request = Request.new()
-          #request.read(source)
-          #request.headers.each do |header|
-          #  name = header.name
-          #  requires = header.required
-          #  stream_type = header.data.stream_type
-          #  stream = header.data.stream
-          #  value = deserialize(stream, stream_type)
+      def deserialize_request(source)
+#        source = BinData::IO.new(source) unless BinData::IO === source
+#        
+#        version = read_int8 source
+#        client = read_int8 source
+#        header_count = read_word16_network source
+#        0.upto(header_count - 1) do
+#          name = read_utf source
+#          required = read_boolean source
+#          length = read_word32_network source
+#          type = read_int8 source
+#          value = deserialize(source, type)
+#          #header = AMFHeader.new(name,required,value)
+#          #add header to the amfbody object
+#          #@amfobj.add_header(header)
+#        end
+#        body_count = read_int16_network source
+#        0.upto(body_count-1) do
+#          target = read_utf source
+#          response = read_utf source
+#          length = read_word32_network source
+#          type = read_int8 source
+#          value = deserialize(source, type)
+#          #body = AMFBody.new(target,response,value)
+#          #add the body to the amfobj 
+#          #@amfobj.add_body(body)
+#          return value
+#        end   
+        
+        request = Request.new()
+        request.read(source)
+        request.headers.each do |header|
+          name = header.name
+          requires = header.required
+          stream_type = header.data.stream_type
+          stream = header.data.stream
+          value = deserialize(stream, stream_type)
           ###  store header 
-          #end
-          #request.bodies.each do |body|
-          #  target = body.target
-          #  response = body.response
-          #  type = body.data.stream_type
-          #  stream = body.data.stream
-          #  value = deserialize(stream, stream_type)
+        end
+        request.bodies.each do |body|
+          target = body.target
+          response = body.response
+          stream_type = body.data.stream_type
+          stream = body.data.stream
+          value = deserialize(stream, stream_type)
           ###  store body
-          #end         
+        end  
+        return request       
       end
 
       def deserialize(source, type=nil)
-        source = BinData::IO.new(source) unless source.instance_of?(BinData::IO)
+        source = BinData::IO.new(source) unless BinData::IO === source
         type = read_int8 source unless type
         
         case type
@@ -260,6 +289,10 @@ module AMF
       end
       
       #IO HELPERS
+      #
+      #
+      #
+      #
       
       def read_int8 source
         source.readbytes(1).unpack('c').first
@@ -277,6 +310,42 @@ module AMF
         source.readbytes(length)
       end
       
+      def read_word16_network source
+        source.readbytes(2).unpack('n').first
+      end
+      
+      def read_int16_network source
+        str = self.readn(source, 2)
+        str.reverse! if byte_order_little? # swap bytes as native=little (and we want network)
+        str.unpack('s').first
+      end
+      
+      def read_utf source
+        length = read_word16_network source
+        readn(source, length)
+      end
+      
+      def read_boolean source
+        d = source.readbytes(1).unpack('c').first
+        (d == 1) ? true : false;
+      end
+      
+      def read_word32_network source
+        source.readbytes(4).unpack('N').first
+      end
+      
+      def byte_order
+        if [0x12345678].pack("L") == "\x12\x34\x56\x78" 
+          :BigEndian
+        else
+          :LittleEndian
+        end
+      end
+    
+      def byte_order_little?
+        (byte_order == :LittleEndian) ? true : false;
+      end
+   
     end
   end
 end

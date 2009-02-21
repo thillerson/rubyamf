@@ -6,86 +6,90 @@ require 'rexml/document'
 describe AMF do
   describe "when deserializing" do
     
-    def readBinary(binary_path)
+    def readBinaryObject(binary_path)
       File.open('spec/fixtures/objects/' + binary_path).read
+    end
+
+    def readBinaryRequest(binary_path)
+      File.open('spec/fixtures/request/' + binary_path).read
     end
     
     describe "simple messages" do
       
       it "should deserialize a null" do  
         expected = nil
-        input = readBinary("null.bin")
+        input = readBinaryObject("null.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
       it "should deserialize a false" do
         expected = false
-        input = readBinary("false.bin")
+        input = readBinaryObject("false.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
       it "should deserialize a true" do
         expected = true
-        input = readBinary("true.bin")
+        input = readBinaryObject("true.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
       it "should deserialize integers" do
         expected = AMF::MAX_INTEGER
-        input = readBinary("max.bin")
+        input = readBinaryObject("max.bin")
         output = AMF.deserialize(input)
         output.should == expected
         
         expected = 0
-        input = readBinary("0.bin")
+        input = readBinaryObject("0.bin")
         output = AMF.deserialize(input)
         output.should == expected
         
         expected = AMF::MIN_INTEGER
-        input = readBinary("min.bin")
+        input = readBinaryObject("min.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
       it "should deserialize large integers" do
         expected = AMF::MAX_INTEGER + 1
-        input = readBinary("largeMax.bin")
+        input = readBinaryObject("largeMax.bin")
         output = AMF.deserialize(input)
         output.should == expected
         
         expected = AMF::MIN_INTEGER - 1
-        input = readBinary("largeMin.bin")
+        input = readBinaryObject("largeMin.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
       it "should deserialize BigNums" do
         expected = 2**1000
-        input = readBinary("bigNum.bin")
+        input = readBinaryObject("bigNum.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
       it "should deserialize a simple string" do
         expected = "String . String"
-        input = readBinary("string.bin")
+        input = readBinaryObject("string.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
       it "should deserialize a symbol as a string" do
         expected = "foo"
-        input = readBinary("symbol.bin")
+        input = readBinaryObject("symbol.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
       it "should deserialize DateTimes" do
         expected = DateTime.parse "1/1/1970"
-        input = readBinary("date.bin")
+        input = readBinaryObject("date.bin")
         output = AMF.deserialize(input)
         output.should == expected
         
@@ -96,7 +100,7 @@ describe AMF do
       
       it "should deserialize Dates" do
         expected = Date.parse "1/1/1970"
-        input = readBinary("date.bin")
+        input = readBinaryObject("date.bin")
         output = AMF.deserialize(input)
         output.should == expected
         
@@ -107,7 +111,7 @@ describe AMF do
 
       it "should deserialize Times" do
         expected = Time.utc 1970, 1, 1, 0
-        input = readBinary("date.bin")
+        input = readBinaryObject("date.bin")
         output = AMF.deserialize(input)
         output.should == expected
 
@@ -130,7 +134,7 @@ describe AMF do
                :another_public_property => 'a_public_value'}
       
         expected = obj
-        input = readBinary("dynObject.bin")
+        input = readBinaryObject("dynObject.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -142,7 +146,7 @@ describe AMF do
         
         #need to account for order
         expected = hash
-        input = readBinary("hash.bin")
+        input = readBinaryObject("hash.bin")
         output = AMF.deserialize(input)
         output.should == expected     
       end
@@ -151,14 +155,14 @@ describe AMF do
       
       it "should deserialize an empty array" do
         expected = []
-        input = readBinary("emptyArray.bin")
+        input = readBinaryObject("emptyArray.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
       it "should deserialize an array of primatives" do
         expected = [1, 2, 3, 4, 5]
-        input = readBinary("primArray.bin")
+        input = readBinaryObject("primArray.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -169,7 +173,7 @@ describe AMF do
         so1 = {:foo_three => 42}
                 
         expected = [h1, h2, so1, {:foo_three => nil}, {}, [h1, h2, so1], [], 42, "", [], "", {}, "bar_one", so1]    
-        input = readBinary("mixedArray.bin")
+        input = readBinaryObject("mixedArray.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -190,14 +194,14 @@ describe AMF do
         sc = {bar => foo}
         
         expected = [foo, bar, foo, bar, foo, sc]
-        input = readBinary("stringRef.bin")
+        input = readBinaryObject("stringRef.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
       
       it "should not reference the empty string" do
         expected = ["", ""]
-        input = readBinary("emptyStringRef.bin")
+        input = readBinaryObject("emptyStringRef.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -205,7 +209,7 @@ describe AMF do
       it "should keep references of duplicate dates" do
         date = Date.parse "1/1/1970"
         expected = [date, date]
-        input = readBinary("datesRef.bin")
+        input = readBinaryObject("datesRef.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -223,7 +227,7 @@ describe AMF do
         obj2 = {:foo => obj1[:foo]}
         
         expected = [[obj1, obj2], "bar", [obj1, obj2]]
-        input = readBinary("objRef.bin") 
+        input = readBinaryObject("objRef.bin") 
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -233,7 +237,7 @@ describe AMF do
         b = %w{ a b c }
 
         expected = [a, b, a, b]
-        input = readBinary("arrayRef.bin")
+        input = readBinaryObject("arrayRef.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -245,7 +249,7 @@ describe AMF do
         a.object_id.should_not == b.object_id
      
         expected = [a,b,a,b]
-        input = readBinary("emptyArrayRef.bin")
+        input = readBinaryObject("emptyArrayRef.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
@@ -265,12 +269,21 @@ describe AMF do
         parent[:children] = [child1, child2]
         
         expected = parent
-        input = readBinary("graphMember.bin")
+        input = readBinaryObject("graphMember.bin")
         output = AMF.deserialize(input)
         output.should == expected
       end
 
+  end
+
+  describe "request" do
+    it "should handle requests from remote object" do
+      expected = true
+      input = readBinaryRequest("true.bin")
+      output = AMF.deserializer.new().deserialize_request(input)
+      output.should == expected
     end
+  end
     
   end
   
