@@ -17,8 +17,10 @@ module AMF
     
     class DataString < BinData::MultiValue
       int32be :len, :value => lambda { stream.length }
-      int8 :stream_type
-      string :stream, :read_length => :len
+      int8 :amf0Type #HACK - IGNORE - needed to unwrap AMF0 Wrapper
+      int32be :amf0ArrayLength #HACK - IGNORE - needed to unwrap AMF0 Wrapper
+      int8 :amf3Type
+      string :stream, :read_length => lambda { len - 6 } #:len
     end
     
     class Header < BinData::MultiValue

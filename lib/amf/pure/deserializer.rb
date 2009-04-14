@@ -65,20 +65,21 @@ module AMF
         request.headers.each do |header|
           name = header.name
           requires = header.required
-          stream_type = header.data.stream_type
+          #stream_type = header.data.stream_type
           stream = header.data.stream
-          value = deserialize(stream, stream_type)
+          value = deserialize(stream)
           ###  store header 
         end
         request.bodies.each do |body|
           target = body.target
           response = body.response
-          stream_type = body.data.stream_type
+          #stream_type = body.data.stream_type
           stream = body.data.stream
-          value = deserialize(stream, stream_type)
+          value = deserialize(stream)
+          return value #["body"][0]
           ###  store body
         end  
-        return request       
+        #return request       
       end
 
       def deserialize(source, type=nil)
@@ -254,13 +255,13 @@ module AMF
           else            
             class_definition['members'].each do |key|
               value = deserialize(source)
-              obj[key] = value
+              obj[key.to_sym] = value
             end
             
             if class_definition['dynamic']
               while (key = read_string source) && key.length != 0  do # read next key
                 value = deserialize(source)
-                obj[key] = value
+                obj[key.to_sym] = value
               end
             end
           end
@@ -277,12 +278,7 @@ module AMF
           return @object_cache[reference]
         else
           seconds = read_double(source).to_f/1000
-          time = if (seconds < 0) # we can't use Time if its a negative second value
-            DateTime.strptime(seconds.to_s, "%s")
-          else 
-            #Time.at(seconds)
-            Time.at(seconds).utc
-          end
+          time = DateTime.strptime(seconds.to_s, "%s")
           cache_object(time)
           time
         end

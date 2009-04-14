@@ -75,7 +75,7 @@ module BinData
 
       str = @raw_io.read(n)
       raise EOFError, "End of file reached" if str.nil?
-      #raise IOError, "data truncated" if str.size < n
+      raise IOError, "data truncated" if str.size < n
       str
     end
 

@@ -6,80 +6,85 @@ require 'rexml/document'
 describe AMF do
   describe "when serializing" do
     
-    def readBinary(binary_path)
+    #File Utilities
+    def readBinaryObject(binary_path)
       File.open('spec/fixtures/objects/' + binary_path).read
+    end
+    
+    def readBinaryRequest(binary_path)
+      File.open('spec/fixtures/request/' + binary_path).read
     end
     
     describe "simple messages" do
       
       it "should serialize a null" do
-        expected = readBinary("null.bin")
+        expected = readBinaryObject("null.bin")
         output = nil.to_amf
         output.should == expected
       end
 
       it "should serialize a false" do
-        expected = readBinary("false.bin")
+        expected = readBinaryObject("false.bin")
         output = false.to_amf
         output.should == expected
       end
 
       it "should serialize a true" do
-        expected = readBinary("true.bin")
+        expected = readBinaryObject("true.bin")
         output = true.to_amf
         output.should == expected
       end
 
       it "should serialize integers" do
-        expected = readBinary("max.bin")
+        expected = readBinaryObject("max.bin")
         input = AMF::MAX_INTEGER
         output = input.to_amf
         output.should == expected
         
-        expected = readBinary("0.bin")
+        expected = readBinaryObject("0.bin")
         output = 0.to_amf
         output.should == expected
         
-        expected = readBinary("min.bin")
+        expected = readBinaryObject("min.bin")
         input = AMF::MIN_INTEGER
         output = input.to_amf
         output.should == expected
       end
       
       it "should serialize large integers" do
-        expected = readBinary("largeMax.bin")
+        expected = readBinaryObject("largeMax.bin")
         input = AMF::MAX_INTEGER + 1
         output = input.to_amf
         output.should == expected
         
-        expected = readBinary("largeMin.bin")
+        expected = readBinaryObject("largeMin.bin")
         input = AMF::MIN_INTEGER - 1
         output = input.to_amf
         output.should == expected
       end
       
       it "should serialize BigNums" do
-        expected = readBinary("bigNum.bin")
+        expected = readBinaryObject("bigNum.bin")
         input = 2**1000
         output = input.to_amf
         output.should == expected
       end
 
       it "should serialize a simple string" do
-        expected = readBinary("string.bin")
+        expected = readBinaryObject("string.bin")
         input = "String . String"
         output = input.to_amf
         output.should == expected
       end
 
       it "should serialize a symbol as a string" do
-        expected = readBinary("symbol.bin")
+        expected = readBinaryObject("symbol.bin")
         output = :foo.to_amf
         output.should == expected
       end
 
       it "should serialize DateTimes" do
-        expected = readBinary("date.bin")
+        expected = readBinaryObject("date.bin")
         input = DateTime.parse "1/1/1970"
         output = input.to_amf
         output.should == expected
@@ -90,7 +95,7 @@ describe AMF do
       end
       
       it "should serialize Dates" do
-        expected = readBinary("date.bin")
+        expected = readBinaryObject("date.bin")
         input = Date.parse "1/1/1970"
         output = input.to_amf
         output.should == expected
@@ -101,7 +106,7 @@ describe AMF do
       end
 
       it "should serialize Times" do
-        expected = readBinary("date.bin")
+        expected = readBinaryObject("date.bin")
         input = Time.utc 1970, 1, 1, 0
         output = input.to_amf
         output.should == expected
@@ -141,7 +146,7 @@ describe AMF do
         obj.property_two = 1
         obj.nil_property = nil
         
-        expected = readBinary("dynObject.bin")
+        expected = readBinaryObject("dynObject.bin")
         input = obj
         output = input.to_amf
         output.should == expected
@@ -168,7 +173,7 @@ describe AMF do
         hash[:foo] = "bar"
         hash[:answer] = 42
         
-        expected = readBinary("hash.bin")
+        expected = readBinaryObject("hash.bin")
         input = hash
         output = input.to_amf
         output.should == expected
@@ -187,14 +192,14 @@ describe AMF do
       it "should serialize an open struct as a dynamic anonymous object"
       
       it "should serialize an empty array" do
-        expected = readBinary("emptyArray.bin")
+        expected = readBinaryObject("emptyArray.bin")
         input = []
         output = input.to_amf
         output.should == expected
       end
       
       it "should serialize an array of primatives" do
-        expected = readBinary("primArray.bin")
+        expected = readBinaryObject("primArray.bin")
         input = [1, 2, 3, 4, 5]
         output = input.to_amf
         output.should == expected
@@ -209,7 +214,7 @@ describe AMF do
         so1 = SimpleObj.new
         so1.foo_three = 42
         
-        expected = readBinary("mixedArray.bin")
+        expected = readBinaryObject("mixedArray.bin")
         input = [h1, h2, so1, SimpleObj.new, {}, [h1, h2, so1], [], 42, "", [], "", {}, "bar_one", so1]    
         output = input.to_amf
         output.should == expected
@@ -230,21 +235,21 @@ describe AMF do
         sc = StringCarrier.new
         sc.str = foo
         
-        expected = readBinary("stringRef.bin")
+        expected = readBinaryObject("stringRef.bin")
         input = [foo, bar, foo, bar, foo, sc]
         output = input.to_amf
         output.should == expected
       end
       
       it "should not reference the empty string" do
-        expected = readBinary("emptyStringRef.bin")
+        expected = readBinaryObject("emptyStringRef.bin")
         input = ""
         output = [input,input].to_amf
         output.should == expected
       end
       
       it "should keep references of duplicate dates" do
-        expected = readBinary("datesRef.bin")
+        expected = readBinaryObject("datesRef.bin")
         input = Date.parse "1/1/1970"
         output = [input,input].to_amf
         output.should == expected
@@ -259,7 +264,7 @@ describe AMF do
         obj2 = SimpleReferenceableObj.new
         obj2.foo = obj1.foo
         
-        expected = readBinary("objRef.bin") 
+        expected = readBinaryObject("objRef.bin") 
         input = [[obj1, obj2], "bar", [obj1, obj2]]
         output = input.to_amf
         output.should == expected
@@ -269,7 +274,7 @@ describe AMF do
         a = [1,2,3]
         b = %w{ a b c }
 
-        expected = readBinary("arrayRef.bin")
+        expected = readBinaryObject("arrayRef.bin")
         input = [a, b, a, b]
         output = input.to_amf
         output.should == expected
@@ -281,7 +286,7 @@ describe AMF do
         a.should == b
         a.object_id.should_not == b.object_id
      
-        expected = readBinary("emptyArrayRef.bin")
+        expected = readBinaryObject("emptyArrayRef.bin")
         input = [a,b,a,b]
         output = input.to_amf
         output.should == expected
@@ -313,7 +318,7 @@ describe AMF do
         level_1_child_2 = parent.add_child GraphMember.new
         # level_2_child_1 = level_1_child_1.add_child GraphMember.new
         
-        expected = readBinary("graphMember.bin")
+        expected = readBinaryObject("graphMember.bin")
         input = parent
         output = input.to_amf()
         output.should == expected
